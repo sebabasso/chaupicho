@@ -594,14 +594,18 @@ async function vPerfil(id) {
   const cadena = cad.data || [];
   const chainHtml = cadena.map((c, i) => `${i ? '<span class="linea" aria-hidden="true"></span>' : ''}<span class="eslabon">${avatar(st.people[c.id] || c, 40, c.id === st.me.id)}<span>${c.id === st.me.id ? 'Vos' : esc(c.name)}</span></span>`).join('');
   $app.innerHTML = `<div style="background:linear-gradient(180deg,#fdebea 0%,var(--bg) 260px)"><div class="pantalla con-tabs">
-    <div class="fila entre">${yo ? logo : `<button class="redondo" type="button" id="atras" aria-label="Volver">${I.volver}</button>`}${yo ? `<span class="fila g8">${st.me.is_admin ? '<a class="pill-btn" href="#/panel">Panel</a>' : ''}<a class="pill-btn" href="#/clave">Contraseña</a><button class="pill-btn" type="button" id="salir" style="border:0;cursor:pointer">Salir</button></span>` : ''}</div>
+    <div class="fila entre">${yo ? logo : `<button class="redondo" type="button" id="atras" aria-label="Volver">${I.volver}</button>`}${yo && st.me.is_admin ? '<a class="pill-btn" href="#/panel">Panel</a>' : ''}</div>
     <div class="fila" style="gap:16px">${yo ? `<label style="position:relative;cursor:pointer;flex:none" aria-label="Cambiar tu foto de perfil">${avatar(p, 72)}<span style="position:absolute;right:-4px;bottom:-4px;width:30px;height:30px;border-radius:999px;background:var(--ciruela);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #fdebea"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><input class="vh" type="file" accept="image/*" id="foto-perfil"></label>` : avatar(p, 72)}<div class="col g4"><h1 class="h-1">${esc(p.name)}${yo ? ' <span class="small">(vos)</span>' : ''}</h1>
       <span class="small">${p.barrio ? esc(p.barrio) + ' · ' : ''}${activos === 1 ? '1 cosa a la venta' : activos + ' cosas a la venta'}</span></div></div>
     ${!yo && cadena.length > 1 ? `<div class="tarjeta col g12" style="padding:16px"><span class="fila entre"><span style="font-size:15px;font-weight:700">Cómo llegás a ${esc(p.name)}</span>${pill(grado(id))}</span><div class="cadena" role="img" aria-label="${esc(cadena.map((c) => (c.id === st.me.id ? 'Vos' : c.name)).join(', '))}">${chainHtml}</div></div>` : ''}
     ${!yo ? `<a class="btn btn-primario ancho" href="${waChat(p.whatsapp, `¡Hola ${p.name}! Te escribo desde Chaupicho.`)}" target="_blank" rel="noopener">${I.chat()}Escribile a ${esc(p.name)} por WhatsApp</a>` : ''}
     <section class="col g12"><h2 class="h-2">${yo ? 'Lo que publicaste' : 'Lo que vende ' + esc(p.name)}</h2>
       ${lista.length ? `<div class="grilla">${lista.map((l) => card(l, yo ? (vistas[l.id] || 0) : null)).join('')}</div>` : `<div class="vacio"><p class="small">${yo ? 'Todavía no publicaste nada.' : 'No tiene nada publicado por ahora.'}</p>${yo ? '<a class="btn btn-primario" href="#/publicar">Publicar algo</a>' : ''}</div>`}
-    </section></div></div>
+    </section>
+    ${yo ? `<section class="col g8" style="margin-top:8px"><h2 class="h-2">Tu cuenta</h2><div class="tarjeta" style="padding:4px 16px">
+      <a href="#/clave" class="fila entre" style="min-height:52px;text-decoration:none;color:var(--ink);font-size:15px;font-weight:700">Cambiar contraseña<span style="color:var(--muted);display:flex">${I.flecha}</span></a>
+      <button type="button" id="salir" class="fila" style="width:100%;min-height:52px;border:0;border-top:1px solid var(--line);background:transparent;padding:0;font-size:15px;font-weight:700;color:var(--coral-ink);cursor:pointer">Salir de Chaupicho</button>
+    </div></section>` : ''}</div></div>
     ${tabs(yo ? 'yo' : '')}`;
   document.getElementById('atras')?.addEventListener('click', () => (history.length > 1 ? history.back() : go('#/')));
   document.getElementById('salir')?.addEventListener('click', salir);
