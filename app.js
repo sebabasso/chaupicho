@@ -116,6 +116,7 @@ async function render() {
   if (q.get('i')) ls.set('chaupicho_codigo', q.get('i'));
   if (parts[0] === 'i' && parts[1]) ls.set('chaupicho_codigo', parts[1]);
   window.scrollTo(0, 0);
+  if (parts[0] !== 'editar') st.editando = null;
 
   if (!st.session) {
     if (parts[0] === 'a' && parts[1]) return vPrevia(parts[1]);
@@ -128,6 +129,7 @@ async function render() {
       case undefined: return await vInicio();
       case 'a': return await vDetalle(parts[1]);
       case 'publicar': return vPublicar();
+      case 'editar': return await vEditar(parts[1]);
       case 'publicado': return await vPublicado(parts[1]);
       case 'p': return await vPerfil(parts[1] === 'yo' ? st.me.id : parts[1]);
       case 'invitar': return vInvitar();
@@ -366,7 +368,7 @@ async function vDetalle(id) {
     </div>
     <div class="barra-abajo"><div class="dentro">
       ${mio
-        ? `<button class="btn btn-peligro" type="button" id="borrar">Borrar</button><button class="btn btn-primario" type="button" id="estado">${l.status === 'vendido' ? 'Volver a publicar' : 'Marcar como vendido'}</button>`
+        ? `<a class="btn btn-borde" href="#/editar/${l.id}">Editar</a><button class="btn btn-primario" type="button" id="estado">${l.status === 'vendido' ? 'Volver a publicar' : 'Marcar como vendido'}</button>`
         : `<a class="btn btn-borde" href="${share}" target="_blank" rel="noopener">${I.compartir(18)}Compartir</a><a class="btn btn-primario" href="${waChat(s.whatsapp, `¡Hola ${s.name}! Vi tu ${l.title} en Chaupicho. ¿Sigue disponible?`)}" target="_blank" rel="noopener">${I.chat()}Escribile por WhatsApp</a>`}
     </div></div>`;
   document.getElementById('atras').onclick = () => (history.length > 1 ? history.back() : go('#/'));
@@ -380,15 +382,6 @@ async function vDetalle(id) {
       if (error) { toast('No se pudo guardar'); e.target.disabled = false; return; }
       toast(nuevo === 'vendido' ? '¡Bien ahí! Quedó como vendido' : 'Está publicado de nuevo');
       vDetalle(l.id);
-    };
-    const b = document.getElementById('borrar');
-    b.onclick = async () => {
-      if (b.dataset.ok !== '1') { b.dataset.ok = '1'; b.textContent = '¿Seguro? Tocá de nuevo'; return; }
-      b.disabled = true;
-      const { error } = await sb.from('listings').delete().eq('id', l.id);
-      if (error) { toast('No se pudo borrar'); b.disabled = false; return; }
-      if (l.photos?.length) await sb.storage.from('fotos').remove(l.photos);
-      toast('Anuncio borrado'); go('#/p/yo');
     };
   }
 }
@@ -409,11 +402,21 @@ async function achicar(file) {
   return await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.82));
 }
 
+async function vEditar(id) {
+  if (st.editando?.id !== id) {
+    const { data: l } = await sb.from('listings').select('*').eq('id', id).maybeSingle();
+    if (!l || l.seller !== st.me.id) return go('#/');
+    st.editando = { id, originales: [...(l.photos || [])], fotos: (l.photos || []).map((path) => ({ path, url: fotoUrl(path) })), title: l.title, price: String(l.price), cat: l.category_id, desc: l.description || '', tipo: l.delivery_type, lugar: l.delivery_place || st.me.barrio || '', nuevaCat: false };
+  }
+  vPublicar();
+}
+
 function vPublicar(err) {
-  const b = (st.borrador ||= { fotos: [], title: '', price: '', cat: null, desc: '', tipo: 'retiro', lugar: st.me.barrio || '', nuevaCat: false });
+  const ed = st.editando;
+  const b = ed || (st.borrador ||= { fotos: [], title: '', price: '', cat: null, desc: '', tipo: 'retiro', lugar: st.me.barrio || '', nuevaCat: false });
   $app.innerHTML = `<div class="pantalla" style="padding-bottom:48px">
-    <div class="fila entre"><a class="redondo" href="#/" aria-label="Cerrar">${I.cerrar}</a><span class="caption" style="color:var(--muted)">Nuevo anuncio</span><span style="width:44px"></span></div>
-    <h1 class="h-1">¿Qué vendés?</h1>
+    <div class="fila entre"><a class="redondo" href="${ed ? '#/a/' + ed.id : '#/'}" aria-label="Cerrar">${I.cerrar}</a><span class="caption" style="color:var(--muted)">${ed ? 'Editar anuncio' : 'Nuevo anuncio'}</span><span style="width:44px"></span></div>
+    <h1 class="h-1">${ed ? 'Editá tu anuncio' : '¿Qué vendés?'}</h1>
     <form id="f" class="col" style="gap:20px" novalidate>
       <div class="col g8"><span class="leyenda">Fotos</span>
         <div class="fotos-grilla">
@@ -437,7 +440,8 @@ function vPublicar(err) {
         <label class="opcion${b.tipo === 'coordinar' ? ' on' : ''}"><input type="radio" name="tipo" value="coordinar"${b.tipo === 'coordinar' ? ' checked' : ''}><span class="col" style="gap:2px"><span style="font-size:15px;font-weight:700">A coordinar</span><span class="ayuda">Lo hablan por WhatsApp</span></span></label>
       </fieldset>
       ${err ? `<p class="error" id="err">${esc(err)}</p>` : ''}
-      <button class="btn btn-primario ancho" type="submit" id="pub" style="height:56px;font-size:15px;margin-top:8px">Publicar</button>
+      <button class="btn btn-primario ancho" type="submit" id="pub" style="height:56px;font-size:15px;margin-top:8px">${ed ? 'Guardar cambios' : 'Publicar'}</button>
+      ${ed ? '<button class="btn btn-peligro ancho" type="button" id="borrar">Borrar anuncio</button>' : ''}
     </form></div>`;
 
   const f = document.getElementById('f');
@@ -476,22 +480,42 @@ function vPublicar(err) {
     try {
       const paths = [];
       for (const ft of b.fotos) {
+        if (ft.path) { paths.push(ft.path); continue; }
         const blob = await achicar(ft.file);
         const path = `${st.me.id}/${crypto.randomUUID()}.jpg`;
         const { error } = await sb.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg' });
         if (error) throw error;
         paths.push(path);
       }
-      btn.textContent = 'Publicando…';
-      const { data, error } = await sb.from('listings').insert({
+      btn.textContent = ed ? 'Guardando…' : 'Publicando…';
+      const campos = {
         title: b.title.trim(), price: precio, category_id: b.cat, description: b.desc.trim() || null,
         delivery_type: b.tipo, delivery_place: b.tipo === 'retiro' ? b.lugar.trim() : null, photos: paths,
-      }).select('id').single();
+      };
+      if (ed) {
+        const { error } = await sb.from('listings').update(campos).eq('id', ed.id);
+        if (error) throw error;
+        const sobran = ed.originales.filter((x) => !paths.includes(x));
+        if (sobran.length) await sb.storage.from('fotos').remove(sobran);
+        b.fotos.forEach((x) => x.file && URL.revokeObjectURL(x.url));
+        st.editando = null; toast('Cambios guardados'); go('#/a/' + ed.id);
+        return;
+      }
+      const { data, error } = await sb.from('listings').insert(campos).select('id').single();
       if (error) throw error;
       b.fotos.forEach((x) => URL.revokeObjectURL(x.url));
       st.borrador = null;
       go('#/publicado/' + data.id);
-    } catch (er) { console.error(er); vPublicar('No se pudo publicar: ' + er.message); }
+    } catch (er) { console.error(er); vPublicar((ed ? 'No se pudo guardar: ' : 'No se pudo publicar: ') + er.message); }
+  };
+  const borrar = document.getElementById('borrar');
+  if (borrar) borrar.onclick = async () => {
+    if (borrar.dataset.ok !== '1') { borrar.dataset.ok = '1'; borrar.textContent = '¿Seguro? Tocá de nuevo para borrarlo'; return; }
+    borrar.disabled = true;
+    const { error } = await sb.from('listings').delete().eq('id', ed.id);
+    if (error) { toast('No se pudo borrar'); borrar.disabled = false; borrar.dataset.ok = ''; borrar.textContent = 'Borrar anuncio'; return; }
+    if (ed.originales.length) await sb.storage.from('fotos').remove(ed.originales);
+    st.editando = null; toast('Anuncio borrado'); go('#/p/yo');
   };
 }
 
