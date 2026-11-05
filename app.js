@@ -74,7 +74,8 @@ const I = {
   flecha: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
 };
 const pill = (txt) => txt ? `<span class="tag tag-lila">${I.pasos}${esc(txt)}</span>` : '';
-const logo = '<span class="logo">chaupicho<b>.</b></span>';
+const logo = '<a class="logo" href="#/" aria-label="Chaupicho, ir al inicio">chaupicho<b>.</b></a>';
+const sonidoCaja = new Audio('caja.mp3'); sonidoCaja.preload = 'auto';
 
 function tabs(activa) {
   const t = (h, k, ic, txt) => `<a href="${h}"${activa === k ? ' aria-current="page"' : ''}><span>${ic}</span>${txt}</a>`;
@@ -326,7 +327,7 @@ async function vInicio() {
     const { cat, q } = st.filtro;
     const qq = q.trim().toLowerCase();
     const lista = todos.filter((l) => (!cat || l.category_id === cat) && (!qq || (l.title + ' ' + (l.description || '') + ' ' + (st.people[l.seller]?.name || '')).toLowerCase().includes(qq)));
-    document.getElementById('lista').innerHTML = lista.length ? `<div class="grilla">${lista.map(card).join('')}</div>`
+    document.getElementById('lista').innerHTML = lista.length ? `<div class="grilla">${lista.map((l) => card(l)).join('')}</div>`
       : todos.length ? '<div class="vacio"><p class="small">No hay nada con ese filtro.</p></div>'
       : `<div class="vacio"><span class="h-2">Todavía no hay nada publicado</span><p class="small">Publicá lo primero que quieras vender e invitá a tus amigos.</p><a class="btn btn-primario" href="#/publicar">Publicar algo</a></div>`;
     document.querySelectorAll('[data-cat]').forEach((b) => b.setAttribute('aria-pressed', String((Number(b.dataset.cat) || null) === cat)));
@@ -352,9 +353,7 @@ async function vDetalle(id) {
   const s = st.people[l.seller] || {};
   const mio = l.seller === st.me.id;
   const fotos = (l.photos || []).map(fotoUrl);
-  let vistasMias = null;
-  if (mio) { const { data: vv } = await sb.rpc('mis_vistas'); vistasMias = (vv || []).find((x) => x.listing_id === l.id)?.vistas || 0; }
-  else sb.rpc('registrar_vista', { p_id: l.id }).then(() => {}, () => {});
+  if (!mio) sb.rpc('registrar_vista', { p_id: l.id }).then(() => {}, () => {});
   const share = waShare(`¡Mirá esto en Chaupicho! ${l.title} a ${pesos(l.price)}. ${linkAnuncio(l.id)}`);
   const iconoEntrega = l.delivery_type === 'retiro' ? I.pin : l.delivery_type === 'envio' ? I.camion : I.chat(18);
   $app.innerHTML = `<div class="galeria">
@@ -367,7 +366,7 @@ async function vDetalle(id) {
       <div class="col g8"><span class="tag tag-cat">${esc(l.categories?.name)}</span>
         <h1 class="h-1">${esc(l.title)}</h1>
         <span class="precio" style="font-size:44px;line-height:.95;letter-spacing:-1.6px">${pesos(l.price)}</span>
-        ${l.status === 'vendido' ? '<span class="tag tag-vendido">Vendido</span>' : ''}${vistasMias != null ? `<span class="tag tag-lila">${'<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'}${vistasTxt(vistasMias)}</span>` : ''}</div>
+        ${l.status === 'vendido' ? '<span class="tag tag-vendido">Vendido</span>' : ''}</div>
       <div class="fila" style="gap:10px"><span class="icono-cuadro" style="background:var(--lila-soft)">${iconoEntrega}</span><span class="col" style="gap:1px"><span class="caption" style="color:var(--muted)">Entrega</span><span style="font-size:15px;font-weight:700">${esc(entregaTexto(l))}</span></span></div>
       ${l.description ? `<p style="white-space:pre-line">${esc(l.description)}</p>` : ''}
       <a class="tarjeta vendedor" href="#/p/${l.seller}">${avatar(s)}
@@ -388,6 +387,7 @@ async function vDetalle(id) {
     document.getElementById('estado').onclick = async (e) => {
       e.target.disabled = true;
       const nuevo = l.status === 'vendido' ? 'activo' : 'vendido';
+      if (nuevo === 'vendido') { try { sonidoCaja.currentTime = 0; sonidoCaja.play().catch(() => {}); } catch {} }
       const { error } = await sb.from('listings').update({ status: nuevo }).eq('id', l.id);
       if (error) { toast('No se pudo guardar'); e.target.disabled = false; return; }
       toast(nuevo === 'vendido' ? '¡Bien ahí! Quedó como vendido' : 'Está publicado de nuevo');
