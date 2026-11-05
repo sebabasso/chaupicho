@@ -21,6 +21,7 @@ const COLORES = ['#c98bf9', '#fac7ca', '#f0716c', '#d9affb', '#ddf5e5', '#fff0dc
 function colorDe(id) { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return COLORES[h % COLORES.length]; }
 function avatar(p, size = 44, yo = false) {
   if (yo) return `<span class="avatar" aria-hidden="true" style="width:${size}px;height:${size}px;background:var(--ciruela);color:#fff;font-size:${Math.round(size * .3)}px">VOS</span>`;
+  if (p?.avatar) return `<img class="avatar" alt="" src="${esc(fotoUrl(p.avatar))}" style="width:${size}px;height:${size}px;object-fit:cover;background:${colorDe(p.id)}">`;
   return `<span class="avatar" aria-hidden="true" style="width:${size}px;height:${size}px;background:${colorDe(p?.id)};font-size:${Math.round(size * .34)}px">${esc(iniciales(p?.name))}</span>`;
 }
 function waNum(raw) {
@@ -73,7 +74,7 @@ const logo = '<span class="logo">chaupicho<b>.</b></span>';
 
 function tabs(activa) {
   const t = (h, k, ic, txt) => `<a href="${h}"${activa === k ? ' aria-current="page"' : ''}><span>${ic}</span>${txt}</a>`;
-  return `<nav class="tabs" aria-label="Secciones"><div class="dentro">${t('#/', 'inicio', I.casa, 'Inicio')}${t('#/publicar', 'publicar', I.mas, 'Publicar')}${t('#/invitar', 'invitar', I.invitar(), 'Invitar')}${t('#/p/yo', 'yo', I.persona, 'Mis cosas')}</div></nav>`;
+  return `<nav class="tabs" aria-label="Secciones"><div class="dentro">${t('#/', 'inicio', I.casa, 'Inicio')}${t('#/publicar', 'publicar', I.mas, 'Publicar')}${t('#/invitar', 'invitar', I.invitar(), 'Invitar')}${t('#/p/yo', 'yo', I.persona, 'Mi perfil')}</div></nav>`;
 }
 
 function card(l) {
@@ -89,7 +90,7 @@ function card(l) {
 async function cargarComunidad() {
   const [c, p, d] = await Promise.all([
     sb.from('categories').select('id,name').order('id'),
-    sb.from('profiles').select('id,name,barrio,whatsapp,invited_by,invite_code'),
+    sb.from('profiles').select('id,name,barrio,whatsapp,invited_by,invite_code,avatar'),
     sb.rpc('degrees'),
   ]);
   st.cats = c.data || [];
@@ -370,6 +371,13 @@ async function vDetalle(id) {
 }
 
 /* ---------- publicar ---------- */
+async function achicarCuadrada(file, lado = 480) {
+  const bmp = await createImageBitmap(file);
+  const m = Math.min(bmp.width, bmp.height);
+  const c = document.createElement('canvas'); c.width = c.height = Math.min(lado, m);
+  c.getContext('2d').drawImage(bmp, (bmp.width - m) / 2, (bmp.height - m) / 2, m, m, 0, 0, c.width, c.height);
+  return await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
+}
 async function achicar(file) {
   const bmp = await createImageBitmap(file);
   const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
@@ -503,7 +511,7 @@ async function vPerfil(id) {
   const chainHtml = cadena.map((c, i) => `${i ? '<span class="linea" aria-hidden="true"></span>' : ''}<span class="eslabon">${avatar(st.people[c.id] || c, 40, c.id === st.me.id)}<span>${c.id === st.me.id ? 'Vos' : esc(c.name)}</span></span>`).join('');
   $app.innerHTML = `<div style="background:linear-gradient(180deg,#fdebea 0%,var(--bg) 260px)"><div class="pantalla con-tabs">
     <div class="fila entre">${yo ? logo : `<button class="redondo" type="button" id="atras" aria-label="Volver">${I.volver}</button>`}${yo ? '<span class="fila g8"><a class="pill-btn" href="#/clave">Contraseña</a><button class="pill-btn" type="button" id="salir" style="border:0;cursor:pointer">Salir</button></span>' : ''}</div>
-    <div class="fila" style="gap:16px">${avatar(p, 72)}<div class="col g4"><h1 class="h-1">${esc(p.name)}${yo ? ' <span class="small">(vos)</span>' : ''}</h1>
+    <div class="fila" style="gap:16px">${yo ? `<label style="position:relative;cursor:pointer;flex:none" aria-label="Cambiar tu foto de perfil">${avatar(p, 72)}<span style="position:absolute;right:-4px;bottom:-4px;width:30px;height:30px;border-radius:999px;background:var(--ciruela);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #fdebea"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><input class="vh" type="file" accept="image/*" id="foto-perfil"></label>` : avatar(p, 72)}<div class="col g4"><h1 class="h-1">${esc(p.name)}${yo ? ' <span class="small">(vos)</span>' : ''}</h1>
       <span class="small">${p.barrio ? esc(p.barrio) + ' · ' : ''}${activos === 1 ? '1 cosa a la venta' : activos + ' cosas a la venta'}</span></div></div>
     ${!yo && cadena.length > 1 ? `<div class="tarjeta col g12" style="padding:16px"><span class="fila entre"><span style="font-size:15px;font-weight:700">Cómo llegás a ${esc(p.name)}</span>${pill(grado(id))}</span><div class="cadena" role="img" aria-label="${esc(cadena.map((c) => (c.id === st.me.id ? 'Vos' : c.name)).join(', '))}">${chainHtml}</div></div>` : ''}
     ${!yo ? `<a class="btn btn-primario ancho" href="${waChat(p.whatsapp, `¡Hola ${p.name}! Te escribo desde Chaupicho.`)}" target="_blank" rel="noopener">${I.chat()}Escribile a ${esc(p.name)} por WhatsApp</a>` : ''}
@@ -513,6 +521,23 @@ async function vPerfil(id) {
     ${tabs(yo ? 'yo' : '')}`;
   document.getElementById('atras')?.addEventListener('click', () => (history.length > 1 ? history.back() : go('#/')));
   document.getElementById('salir')?.addEventListener('click', salir);
+  const fp = document.getElementById('foto-perfil');
+  if (fp) fp.onchange = async () => {
+    const file = fp.files[0]; if (!file) return;
+    toast('Subiendo tu foto…');
+    try {
+      const blob = await achicarCuadrada(file);
+      const path = `${st.me.id}/perfil-${crypto.randomUUID()}.jpg`;
+      const up = await sb.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg' });
+      if (up.error) throw up.error;
+      const vieja = st.me.avatar;
+      const { error } = await sb.from('profiles').update({ avatar: path }).eq('id', st.me.id);
+      if (error) throw error;
+      if (vieja) sb.storage.from('fotos').remove([vieja]);
+      st.me.avatar = path; if (st.people[st.me.id]) st.people[st.me.id].avatar = path;
+      toast('¡Foto actualizada!'); vPerfil(st.me.id);
+    } catch (e) { console.error(e); toast('No se pudo subir la foto'); }
+  };
 }
 
 /* ---------- invitar ---------- */
