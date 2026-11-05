@@ -123,6 +123,7 @@ async function render() {
   if (q.get('i')) ls.set('chaupicho_codigo', q.get('i'));
   if (parts[0] === 'i' && parts[1]) ls.set('chaupicho_codigo', parts[1]);
   window.scrollTo(0, 0);
+  document.body.classList.toggle('ancho', parts[0] === 'panel');
   if (parts[0] !== 'editar') st.editando = null;
 
   if (!st.session) {
@@ -669,29 +670,29 @@ async function vPanel() {
     <div class="fila entre"><a class="redondo" href="#/p/yo" aria-label="Volver">${I.volver}</a><span class="caption" style="color:var(--muted)">Solo lo ven los administradores</span><span style="width:44px"></span></div>
     <h1 class="h-1">Panel</h1>
 
-    <section class="col g12"><div class="grilla">
+    <section class="col g12"><div class="grilla panel-tiles">
       ${tile(t.personas, t.personas === 1 ? 'Persona' : 'Personas', `${t.activos_7d} abrieron la app esta semana`)}
       ${tile(t.activos, 'Anuncios activos', `${pesos(t.monto_publicado)} publicados`)}
       ${tile(t.vendidos, t.vendidos === 1 ? 'Venta' : 'Ventas', `${pesos(t.monto_vendido)} vendidos`)}
       ${tile(t.vistas, 'Vistas', 'Personas distintas por anuncio')}
     </div></section>
 
-    <section class="col g12"><h2 class="h-2">Crecimiento</h2><p class="small">Últimas 8 semanas.</p>
+    <section class="col g12"><h2 class="h-2">Crecimiento</h2><p class="small">Últimas 8 semanas.</p><div class="panel-3">
       <div class="tarjeta col g4" style="padding:16px"><span style="font-size:15px;font-weight:700">Personas nuevas</span>${columnas(d.semanas, 'personas', '#3c0443')}</div>
       <div class="tarjeta col g4" style="padding:16px"><span style="font-size:15px;font-weight:700">Anuncios publicados</span>${columnas(d.semanas, 'anuncios', '#7a2cc0')}</div>
       <div class="tarjeta col g4" style="padding:16px"><span style="font-size:15px;font-weight:700">Ventas</span>${columnas(d.semanas, 'ventas', '#0e7c3d')}</div>
-    </section>
+    </div></section>
 
     <section class="col g12"><h2 class="h-2">Árbol de invitaciones</h2>
-      <p class="small">Cada persona cuelga de quien la invitó. Deslizá para ver todo el árbol.</p>
-      <div class="tarjeta col g8" style="padding:16px"><span style="font-size:15px;font-weight:700">Cómo se multiplica</span>
+      <p class="small">Cada persona cuelga de quien la invitó.<span class="solo-celu"> Deslizá para ver todo el árbol.</span></p>
+      <div class="panel-arbol"><div class="col g12 panel-lateral"><div class="tarjeta col g8" style="padding:16px"><span style="font-size:15px;font-weight:700">Cómo se multiplica</span>
         ${gen.map((n, g) => `<div class="fila" style="gap:10px"><span class="small" style="width:92px;flex:none">${g === 0 ? 'Fundadores' : `Generación ${g}`}</span><span style="height:22px;border-radius:999px;background:${g === 0 ? 'var(--ink)' : 'var(--lila)'};width:${Math.max(8, (n / maxGen) * 100)}%;max-width:calc(100% - 140px)"></span><span style="font-size:14px;font-weight:700">${n}</span></div>`).join('')}
       </div>
-      <div class="tarjeta arbol" style="padding:8px 0 20px"><ul>${raices.map(nodo).join('')}</ul></div>
-      ${invitan.length ? `<div class="tarjeta" style="padding:4px 16px"><div style="padding:12px 0 0;font-size:15px;font-weight:700">Quienes más invitaron</div>${invitan.map((p, i) => fila(persona(p), `<span class="tag tag-lila">${p.invitados} ${p.invitados === 1 ? 'persona' : 'personas'}</span>`, i)).join('')}</div>` : ''}
-    </section>
+      ${invitan.length ? `<div class="tarjeta" style="padding:4px 16px"><div style="padding:12px 0 0;font-size:15px;font-weight:700">Quienes más invitaron</div>${invitan.map((p, i) => fila(persona(p), `<span class="tag tag-lila">${p.invitados} ${p.invitados === 1 ? 'persona' : 'personas'}</span>`, i)).join('')}</div>` : ''}</div>
+      <div class="tarjeta arbol" style="padding:8px 0 20px"><ul>${raices.map(nodo).join('')}</ul></div></div>
+      </section>
 
-    <section class="col g12"><h2 class="h-2">Anuncios</h2>
+    <section class="col g12"><h2 class="h-2">Anuncios</h2><div class="panel-3">
       <div class="tarjeta" style="padding:4px 16px"><div style="padding:12px 0 0;font-size:15px;font-weight:700">Los más vistos</div>
         ${vistos.length ? vistos.map((a, i) => fila(`<a href="#/a/${a.id}" class="col" style="gap:2px;text-decoration:none;color:var(--ink);min-width:0"><span style="font-size:15px;font-weight:700">${esc(a.title)}</span><span class="small">${esc(P[a.seller]?.name || '')} · ${pesos(a.price)}${a.status === 'vendido' ? ' · vendido' : ''}</span></a>`, `<span class="tag tag-lila" style="flex:none">${a.vistas} ${a.vistas === 1 ? 'vista' : 'vistas'}</span>`, i)).join('') : '<p class="small" style="padding:12px 0">Todavía no hay vistas.</p>'}
       </div>
@@ -703,7 +704,7 @@ async function vPanel() {
         ${d.categorias.map((c) => `<tr><td>${esc(c.name)}</td><td>${c.activos}</td><td>${c.vendidos}</td><td>${c.precio_promedio != null ? pesos(c.precio_promedio) : '—'}</td></tr>`).join('')}
         </tbody></table>
       </div>
-    </section>
+    </div></section>
 
     <section class="col g12"><h2 class="h-2">Actividad</h2><p class="small">Ordenado por la última vez que abrieron la app.</p>
       <div class="tarjeta" style="padding:4px 16px;overflow-x:auto">

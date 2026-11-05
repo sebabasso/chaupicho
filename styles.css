@@ -175,3 +175,16 @@ legend{padding:0;margin-bottom:8px}
 .arbol .nodo:hover{background:var(--lila-soft)}
 .arbol .nombre{font-size:12px;font-weight:700;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .arbol .sub{font-size:11px;font-weight:600;color:var(--lila-ink)}
+
+/* panel en compu */
+.panel-3,.panel-arbol{display:flex;flex-direction:column;gap:12px}
+body.ancho #app{max-width:1240px}
+@media (min-width:900px){
+  body.ancho .pantalla{padding:32px 32px 64px;gap:28px}
+  body.ancho .panel-tiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  body.ancho .panel-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+  body.ancho .panel-arbol{display:grid;grid-template-columns:320px minmax(0,1fr);align-items:start}
+  body.ancho .arbol{min-height:100%}
+  body.ancho .h-1{font-size:44px}
+}
+@media (min-width:900px){body.ancho .solo-celu{display:none}}
