@@ -14,6 +14,9 @@ const st = { session: null, me: null, cats: [], people: {}, deg: {}, filtro: { c
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pesos = (n) => '$' + Number(n || 0).toLocaleString('es-AR');
 const go = (h) => { if (location.hash === h) render(); else location.hash = h; };
+const reemplazar = (h) => location.replace(APP_URL + h);
+// sale de la edición sin dejarla en el historial
+function salirDeEdicion(id) { if (st.desdeDetalle === id) { st.desdeDetalle = null; history.back(); } else reemplazar('#/a/' + id); }
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
 function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2400); }
 function iniciales(n) { const p = String(n || '?').trim().split(/\s+/); return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)).toUpperCase(); }
@@ -369,13 +372,14 @@ async function vDetalle(id) {
     </div>
     <div class="barra-abajo"><div class="dentro">
       ${mio
-        ? `<a class="btn btn-borde" href="#/editar/${l.id}">Editar</a><button class="btn btn-primario" type="button" id="estado">${l.status === 'vendido' ? 'Volver a publicar' : 'Marcar como vendido'}</button>`
+        ? `<a class="btn btn-borde" href="#/editar/${l.id}" id="editar">Editar</a><button class="btn btn-primario" type="button" id="estado">${l.status === 'vendido' ? 'Volver a publicar' : 'Marcar como vendido'}</button>`
         : `<a class="btn btn-borde" href="${share}" target="_blank" rel="noopener">${I.compartir(18)}Compartir</a><a class="btn btn-primario" href="${waChat(s.whatsapp, `¡Hola ${s.name}! Vi tu ${l.title} en Chaupicho. ¿Sigue disponible?`)}" target="_blank" rel="noopener">${I.chat()}Escribile por WhatsApp</a>`}
     </div></div>`;
   document.getElementById('atras').onclick = () => (history.length > 1 ? history.back() : go('#/'));
   const tira = document.getElementById('tira');
   if (tira && fotos.length > 1) tira.onscroll = () => { const i = Math.round(tira.scrollLeft / tira.clientWidth); document.querySelectorAll('.puntos span').forEach((p, k) => p.classList.toggle('on', k === i)); };
   if (mio) {
+    document.getElementById('editar').onclick = () => { st.desdeDetalle = l.id; };
     document.getElementById('estado').onclick = async (e) => {
       e.target.disabled = true;
       const nuevo = l.status === 'vendido' ? 'activo' : 'vendido';
@@ -416,7 +420,7 @@ function vPublicar(err) {
   const ed = st.editando;
   const b = ed || (st.borrador ||= { fotos: [], title: '', price: '', cat: null, desc: '', tipo: 'retiro', lugar: st.me.barrio || '', nuevaCat: false });
   $app.innerHTML = `<div class="pantalla" style="padding-bottom:48px">
-    <div class="fila entre"><a class="redondo" href="${ed ? '#/a/' + ed.id : '#/'}" aria-label="Cerrar">${I.cerrar}</a><span class="caption" style="color:var(--muted)">${ed ? 'Editar anuncio' : 'Nuevo anuncio'}</span><span style="width:44px"></span></div>
+    <div class="fila entre"><a class="redondo" href="${ed ? '#/a/' + ed.id : '#/'}" id="cerrar" aria-label="Cerrar">${I.cerrar}</a><span class="caption" style="color:var(--muted)">${ed ? 'Editar anuncio' : 'Nuevo anuncio'}</span><span style="width:44px"></span></div>
     <h1 class="h-1">${ed ? 'Editá tu anuncio' : '¿Qué vendés?'}</h1>
     <form id="f" class="col" style="gap:20px" novalidate>
       <div class="col g8"><span class="leyenda">Fotos</span>
@@ -445,6 +449,7 @@ function vPublicar(err) {
       ${ed ? '<button class="btn btn-peligro ancho" type="button" id="borrar">Borrar anuncio</button>' : ''}
     </form></div>`;
 
+  if (ed) document.getElementById('cerrar').onclick = (e) => { e.preventDefault(); st.editando = null; salirDeEdicion(ed.id); };
   const f = document.getElementById('f');
   const guardar = () => { b.title = f.elements.title.value; b.price = f.price.value; b.desc = f.desc.value; if (f.lugar) b.lugar = f.lugar.value; };
   document.getElementById('err')?.scrollIntoView({ block: 'center' });
@@ -499,14 +504,14 @@ function vPublicar(err) {
         const sobran = ed.originales.filter((x) => !paths.includes(x));
         if (sobran.length) await sb.storage.from('fotos').remove(sobran);
         b.fotos.forEach((x) => x.file && URL.revokeObjectURL(x.url));
-        st.editando = null; toast('Cambios guardados'); go('#/a/' + ed.id);
+        st.editando = null; toast('Cambios guardados'); salirDeEdicion(ed.id);
         return;
       }
       const { data, error } = await sb.from('listings').insert(campos).select('id').single();
       if (error) throw error;
       b.fotos.forEach((x) => URL.revokeObjectURL(x.url));
       st.borrador = null;
-      go('#/publicado/' + data.id);
+      reemplazar('#/publicado/' + data.id);
     } catch (er) { console.error(er); vPublicar((ed ? 'No se pudo guardar: ' : 'No se pudo publicar: ') + er.message); }
   };
   const borrar = document.getElementById('borrar');
@@ -516,7 +521,7 @@ function vPublicar(err) {
     const { error } = await sb.from('listings').delete().eq('id', ed.id);
     if (error) { toast('No se pudo borrar'); borrar.disabled = false; borrar.dataset.ok = ''; borrar.textContent = 'Borrar anuncio'; return; }
     if (ed.originales.length) await sb.storage.from('fotos').remove(ed.originales);
-    st.editando = null; toast('Anuncio borrado'); go('#/p/yo');
+    st.editando = null; st.desdeDetalle = null; toast('Anuncio borrado'); reemplazar('#/p/yo');
   };
 }
 
