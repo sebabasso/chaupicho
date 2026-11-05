@@ -242,18 +242,19 @@ function vClave(recuperando) {
 async function vBienvenida(code) {
   const { data: quien } = await sb.rpc('inviter_name', { p_code: code });
   if (!quien) return vEntrar('Ese link de invitación no es válido. Pedile uno nuevo a quien te invitó.');
-  $app.innerHTML = `<div style="background:linear-gradient(180deg,#fdebea 0%,var(--bg) 320px)"><div class="pantalla" style="padding-top:32px;padding-bottom:40px">
-    ${logo}
+  const fila = (ic, txt) => `<span class="fila" style="align-items:flex-start"><span class="icono-cuadro" style="background:var(--lila);color:var(--ink)">${ic}</span><p style="color:#fff;padding-top:7px">${txt}</p></span>`;
+  $app.innerHTML = `<div class="plena" style="padding-top:32px;padding-bottom:40px">
+    <span class="logo" style="color:#fff">chaupicho<b>.</b></span>
     <div class="col g16" style="margin-top:8px">${avatar({ id: code, name: quien }, 72)}
-      <h1 class="h-xl">${esc(quien)} te invitó a Chaupicho</h1>
-      <p style="font-size:17px">Un mercado de cosas usadas entre amigos.</p></div>
-    <div class="tarjeta col g12" style="padding:20px">
-      <span class="fila" style="align-items:flex-start"><span class="icono-cuadro" style="background:var(--lila-soft)">${I.lupa}</span><p>Ves lo que venden tus amigos, y los amigos de tus amigos.</p></span>
-      <span class="fila" style="align-items:flex-start"><span class="icono-cuadro" style="background:var(--rubor)">${I.camara}</span><p>Publicás lo que ya no usás en un minuto.</p></span>
-      <span class="fila" style="align-items:flex-start"><span class="icono-cuadro" style="background:var(--ahorro-soft)">${I.chat(18)}</span><p>Lo demás lo arreglan por WhatsApp.</p></span>
+      <h1 class="h-xl" style="color:var(--lila)">${esc(quien)} te invitó a Chaupicho</h1>
+      <p style="font-size:17px;color:#fff">Un mercado de cosas usadas entre amigos.</p></div>
+    <div class="col g12" style="padding:20px;border-radius:20px;background:rgba(255,255,255,.08)">
+      ${fila(I.lupa, 'Ves lo que venden tus amigos, y los amigos de tus amigos.')}
+      ${fila(I.camara, 'Publicás lo que ya no usás en un minuto.')}
+      ${fila(I.chat(18), 'Lo demás lo arreglan por WhatsApp.')}
     </div>
-    <a class="btn btn-primario ancho" style="height:56px;font-size:15px" href="#/entrar">Sumarme</a>
-  </div></div>`;
+    <a class="btn btn-lila ancho" style="height:56px;font-size:15px" href="#/entrar">Sumarme</a>
+  </div>`;
 }
 
 async function vPrevia(id) {
