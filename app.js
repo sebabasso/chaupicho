@@ -138,6 +138,21 @@ async function render() {
   } catch (e) { console.error(e); $app.innerHTML = `<div class="pantalla"><p class="error">Algo falló: ${esc(e.message)}</p><a class="btn btn-borde" href="#/">Volver al inicio</a></div>`; }
 }
 
+const OJO = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const OJO_NO = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.7 8.5 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.5 4.5-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+function campoClave(label, autocomplete, ayuda) {
+  return `<label class="campo"><span>${label}</span><span style="position:relative;display:block"><input class="entrada" type="password" name="clave" required minlength="6" autocomplete="${autocomplete}" style="padding-right:56px"><button type="button" data-ver aria-label="Mostrar contraseña" aria-pressed="false" style="position:absolute;right:4px;top:2px;width:44px;height:44px;border:0;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer">${OJO}</button></span>${ayuda ? `<span class="ayuda">${ayuda}</span>` : ''}</label>`;
+}
+function activarOjos() {
+  document.querySelectorAll('[data-ver]').forEach((b) => (b.onclick = () => {
+    const inp = b.previousElementSibling; const ver = inp.type === 'password';
+    inp.type = ver ? 'text' : 'password';
+    b.innerHTML = ver ? OJO_NO : OJO;
+    b.setAttribute('aria-label', ver ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    b.setAttribute('aria-pressed', String(ver));
+  }));
+}
+
 /* ---------- pantallas sin cuenta ---------- */
 async function vEntrar(msgInv, modo) {
   const cod = ls.get('chaupicho_codigo');
@@ -153,13 +168,14 @@ async function vEntrar(msgInv, modo) {
     <form id="f" class="col g12">
       <h2 class="h-2">${crear ? 'Creá tu cuenta' : 'Entrá a tu cuenta'}</h2>
       <label class="campo"><span>Tu mail</span><input class="entrada" type="email" name="email" required autocomplete="email" inputmode="email" placeholder="nombre@mail.com"></label>
-      <label class="campo"><span>${crear ? 'Elegí una contraseña' : 'Tu contraseña'}</span><input class="entrada" type="password" name="clave" required minlength="6" autocomplete="${crear ? 'new-password' : 'current-password'}">${crear ? '<span class="ayuda">Mínimo 6 caracteres.</span>' : ''}</label>
+      ${campoClave(crear ? 'Elegí una contraseña' : 'Tu contraseña', crear ? 'new-password' : 'current-password', crear ? 'Mínimo 6 caracteres.' : '')}
       <div id="msg">${msgInv ? `<p class="error">${esc(msgInv)}</p>` : ''}</div>
       <button class="btn btn-primario ancho" type="submit">${crear ? 'Crear cuenta' : 'Entrar'}</button>
       <button class="btn btn-borde ancho" type="button" id="cambiar">${crear ? 'Ya tengo cuenta' : 'Crear una cuenta nueva'}</button>
       ${crear ? '' : '<button class="btn ancho" type="button" id="olvide" style="background:transparent;color:var(--lila-ink);height:44px">Me olvidé la contraseña</button>'}
     </form>
   </div>`;
+  activarOjos();
   const f = document.getElementById('f');
   const m = document.getElementById('msg');
   document.getElementById('cambiar').onclick = () => vEntrar(null, crear ? 'entrar' : 'crear');
@@ -208,10 +224,11 @@ function vClave(recuperando) {
     <h1 class="h-1">${recuperando ? 'Elegí una contraseña nueva' : 'Tu contraseña'}</h1>
     <p>${recuperando ? 'Con esta vas a entrar desde ahora.' : 'Ponela o cambiala para poder entrar desde cualquier celu con tu mail.'}</p>
     <form id="f" class="col g12">
-      <label class="campo"><span>Contraseña nueva</span><input class="entrada" type="password" name="clave" required minlength="6" autocomplete="new-password"><span class="ayuda">Mínimo 6 caracteres.</span></label>
+      ${campoClave('Contraseña nueva', 'new-password', 'Mínimo 6 caracteres.')}
       <div id="msg"></div>
       <button class="btn btn-primario ancho" type="submit">Guardar contraseña</button>
     </form></div>`;
+  activarOjos();
   const f = document.getElementById('f');
   f.onsubmit = async (e) => {
     e.preventDefault();
@@ -225,13 +242,18 @@ function vClave(recuperando) {
 async function vBienvenida(code) {
   const { data: quien } = await sb.rpc('inviter_name', { p_code: code });
   if (!quien) return vEntrar('Ese link de invitación no es válido. Pedile uno nuevo a quien te invitó.');
-  $app.innerHTML = `<div class="plena" style="justify-content:space-between">
-    <span class="logo" style="color:#fff">chaupicho<b>.</b></span>
-    <div class="col g16">${avatar({ id: code, name: quien }, 72)}
-      <h1 class="h-xl" style="color:var(--lila)">${esc(quien)} te invitó a Chaupicho</h1>
-      <p>Un mercado de cosas usadas entre amigos. Ves lo que venden y publicás lo que ya no usás. Lo demás se arregla por WhatsApp.</p></div>
-    <a class="btn btn-lila ancho" href="#/entrar">Sumarme</a>
-  </div>`;
+  $app.innerHTML = `<div style="background:linear-gradient(180deg,#fdebea 0%,var(--bg) 320px)"><div class="pantalla" style="padding-top:32px;padding-bottom:40px">
+    ${logo}
+    <div class="col g16" style="margin-top:8px">${avatar({ id: code, name: quien }, 72)}
+      <h1 class="h-xl">${esc(quien)} te invitó a Chaupicho</h1>
+      <p style="font-size:17px">Un mercado de cosas usadas entre amigos.</p></div>
+    <div class="tarjeta col g12" style="padding:20px">
+      <span class="fila" style="align-items:flex-start"><span class="icono-cuadro" style="background:var(--lila-soft)">${I.lupa}</span><p>Ves lo que venden tus amigos, y los amigos de tus amigos.</p></span>
+      <span class="fila" style="align-items:flex-start"><span class="icono-cuadro" style="background:var(--rubor)">${I.camara}</span><p>Publicás lo que ya no usás en un minuto.</p></span>
+      <span class="fila" style="align-items:flex-start"><span class="icono-cuadro" style="background:var(--ahorro-soft)">${I.chat(18)}</span><p>Lo demás lo arreglan por WhatsApp.</p></span>
+    </div>
+    <a class="btn btn-primario ancho" style="height:56px;font-size:15px" href="#/entrar">Sumarme</a>
+  </div></div>`;
 }
 
 async function vPrevia(id) {

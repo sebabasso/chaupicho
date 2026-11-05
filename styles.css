@@ -126,7 +126,7 @@ legend{padding:0;margin-bottom:8px}
 .cadena .linea{flex:1;min-width:12px;height:2px;margin-top:19px;background:var(--lila)}
 
 /* pantalla plena */
-.plena{min-height:100vh;background:var(--grad-pantalla);color:#fff;padding:20px 16px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:20px}
+.plena{min-height:100vh;min-height:100dvh;background:var(--grad-pantalla);color:#fff;padding:20px 16px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:20px}
 .plena a{color:#d9affb}
 .plena .redondo{background:rgba(255,255,255,.12);color:#fff;box-shadow:none}
 
