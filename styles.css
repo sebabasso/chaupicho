@@ -150,3 +150,28 @@ legend{padding:0;margin-bottom:8px}
 .visor .cuadro img{max-width:100%;max-height:100%;object-fit:contain}
 .visor .cerrar{position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;background:rgba(255,255,255,.14);color:#fff;box-shadow:none}
 .visor .contador{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-weight:600;background:rgba(255,255,255,.14);padding:6px 12px;border-radius:999px}
+
+/* panel */
+.tabla{width:100%;border-collapse:collapse;font-size:14px}
+.tabla th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:6px 8px 8px 0;white-space:nowrap}
+.tabla td{padding:10px 8px 10px 0;border-top:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tabla th:not(:first-child),.tabla td:not(:first-child){text-align:right}
+.arbol{overflow-x:auto}
+.arbol ul{display:flex;justify-content:center;padding:20px 0 0;margin:0;position:relative;min-width:max-content}
+.arbol>ul{padding-top:12px;margin:0 auto}
+.arbol li{list-style:none;position:relative;padding:20px 2px 0;display:flex;flex-direction:column;align-items:center}
+.arbol li::before,.arbol li::after{content:"";position:absolute;top:0;width:50%;height:20px;border-top:2px solid var(--lila)}
+.arbol li::before{right:50%}
+.arbol li::after{left:50%;border-left:2px solid var(--lila)}
+.arbol li:only-child::before,.arbol li:only-child::after{display:none}
+.arbol li:only-child{padding-top:0}
+.arbol li:first-child::before,.arbol li:last-child::after{border:0 none}
+.arbol li:last-child::before{border-right:2px solid var(--lila);border-radius:0 10px 0 0}
+.arbol li:first-child::after{border-radius:10px 0 0 0}
+.arbol ul ul::before{content:"";position:absolute;top:0;left:50%;height:20px;border-left:2px solid var(--lila)}
+.arbol>ul>li{padding-top:0}
+.arbol>ul>li::before,.arbol>ul>li::after{display:none}
+.arbol .nodo{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border-radius:14px;text-decoration:none;color:var(--ink);min-width:62px}
+.arbol .nodo:hover{background:var(--lila-soft)}
+.arbol .nombre{font-size:12px;font-weight:700;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arbol .sub{font-size:11px;font-weight:600;color:var(--lila-ink)}

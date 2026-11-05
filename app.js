@@ -94,6 +94,7 @@ function card(l, vistas) {
 
 /* ---------- datos ---------- */
 async function cargarComunidad() {
+  sb.rpc('marcar_visto').then(() => {}, () => {});
   const [c, p, d] = await Promise.all([
     sb.from('categories').select('id,name').order('id'),
     sb.from('profiles').select('id,name,barrio,whatsapp,invited_by,invite_code,avatar'),
@@ -140,6 +141,7 @@ async function render() {
       case 'p': return await vPerfil(parts[1] === 'yo' ? st.me.id : parts[1]);
       case 'invitar': return vInvitar();
       case 'clave': return vClave();
+      case 'panel': return await vPanel();
       case 'i': return go('#/');
       default: return go('#/');
     }
@@ -591,7 +593,7 @@ async function vPerfil(id) {
   const cadena = cad.data || [];
   const chainHtml = cadena.map((c, i) => `${i ? '<span class="linea" aria-hidden="true"></span>' : ''}<span class="eslabon">${avatar(st.people[c.id] || c, 40, c.id === st.me.id)}<span>${c.id === st.me.id ? 'Vos' : esc(c.name)}</span></span>`).join('');
   $app.innerHTML = `<div style="background:linear-gradient(180deg,#fdebea 0%,var(--bg) 260px)"><div class="pantalla con-tabs">
-    <div class="fila entre">${yo ? logo : `<button class="redondo" type="button" id="atras" aria-label="Volver">${I.volver}</button>`}${yo ? '<span class="fila g8"><a class="pill-btn" href="#/clave">Contraseña</a><button class="pill-btn" type="button" id="salir" style="border:0;cursor:pointer">Salir</button></span>' : ''}</div>
+    <div class="fila entre">${yo ? logo : `<button class="redondo" type="button" id="atras" aria-label="Volver">${I.volver}</button>`}${yo ? `<span class="fila g8">${st.me.is_admin ? '<a class="pill-btn" href="#/panel">Panel</a>' : ''}<a class="pill-btn" href="#/clave">Contraseña</a><button class="pill-btn" type="button" id="salir" style="border:0;cursor:pointer">Salir</button></span>` : ''}</div>
     <div class="fila" style="gap:16px">${yo ? `<label style="position:relative;cursor:pointer;flex:none" aria-label="Cambiar tu foto de perfil">${avatar(p, 72)}<span style="position:absolute;right:-4px;bottom:-4px;width:30px;height:30px;border-radius:999px;background:var(--ciruela);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #fdebea"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><input class="vh" type="file" accept="image/*" id="foto-perfil"></label>` : avatar(p, 72)}<div class="col g4"><h1 class="h-1">${esc(p.name)}${yo ? ' <span class="small">(vos)</span>' : ''}</h1>
       <span class="small">${p.barrio ? esc(p.barrio) + ' · ' : ''}${activos === 1 ? '1 cosa a la venta' : activos + ' cosas a la venta'}</span></div></div>
     ${!yo && cadena.length > 1 ? `<div class="tarjeta col g12" style="padding:16px"><span class="fila entre"><span style="font-size:15px;font-weight:700">Cómo llegás a ${esc(p.name)}</span>${pill(grado(id))}</span><div class="cadena" role="img" aria-label="${esc(cadena.map((c) => (c.id === st.me.id ? 'Vos' : c.name)).join(', '))}">${chainHtml}</div></div>` : ''}
@@ -619,6 +621,101 @@ async function vPerfil(id) {
       toast('¡Foto actualizada!'); vPerfil(st.me.id);
     } catch (e) { console.error(e); toast('No se pudo subir la foto'); }
   };
+}
+
+/* ---------- panel (solo administradores) ---------- */
+function hace(fecha) {
+  if (!fecha) return 'Nunca';
+  const min = Math.round((Date.now() - new Date(fecha)) / 60000);
+  if (min < 60) return min <= 1 ? 'Recién' : `Hace ${min} min`;
+  const h = Math.round(min / 60); if (h < 24) return `Hace ${h} h`;
+  const d = Math.round(h / 24); return d === 1 ? 'Ayer' : `Hace ${d} días`;
+}
+function columnas(semanas, clave, color) {
+  const W = 320, H = 120, base = 92, n = semanas.length, ancho = 26, paso = (W - 16) / n;
+  const max = Math.max(1, ...semanas.map((x) => x[clave]));
+  const dia = (iso) => `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}`;
+  const total = semanas.reduce((a, x) => a + x[clave], 0);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${total} en las últimas 8 semanas">
+    <line x1="8" x2="${W - 8}" y1="${base}" y2="${base}" stroke="#e7e0ee"/>
+    ${semanas.map((x, i) => { const v = x[clave]; const h = v ? Math.max(4, (v / max) * 70) : 0; const cx = 8 + paso * i + paso / 2;
+      return `${h ? `<rect x="${cx - ancho / 2}" y="${base - h}" width="${ancho}" height="${h}" rx="5" fill="${color}"/>` : ''}
+      ${v ? `<text x="${cx}" y="${base - h - 6}" text-anchor="middle" font-size="12" font-weight="700" fill="#3c0443">${v}</text>` : ''}
+      ${i === 0 || i === n - 1 || i === Math.floor(n / 2) ? `<text x="${cx}" y="${base + 18}" text-anchor="middle" font-size="11" fill="#62526b">${i === n - 1 ? 'Esta sem.' : dia(x.semana)}</text>` : ''}`; }).join('')}
+  </svg>`;
+}
+async function vPanel() {
+  if (!st.me.is_admin) return go('#/');
+  $app.innerHTML = '<div class="cargando">Cargando el panel…</div>';
+  const { data: d, error } = await sb.rpc('admin_panel');
+  if (error) throw error;
+  const P = Object.fromEntries(d.personas.map((p) => [p.id, p]));
+  const hijos = {}; d.personas.forEach((p) => { if (p.invited_by && P[p.invited_by]) (hijos[p.invited_by] ||= []).push(p); });
+  const raices = d.personas.filter((p) => !p.invited_by || !P[p.invited_by]);
+  // generaciones
+  const gen = []; const marcar = (p, g) => { gen[g] = (gen[g] || 0) + 1; (hijos[p.id] || []).forEach((h) => marcar(h, g + 1)); };
+  raices.forEach((r) => marcar(r, 0));
+  const maxGen = Math.max(...gen);
+  const nodo = (p) => `<li><a href="#/p/${p.id}" class="nodo">${avatar(p, 36)}<span class="nombre">${esc(p.name)}</span>${p.invitados ? `<span class="sub">invitó a ${p.invitados}</span>` : ''}</a>${hijos[p.id] ? `<ul>${hijos[p.id].map(nodo).join('')}</ul>` : ''}</li>`;
+  const t = d.totales;
+  const tile = (num, txt, sub) => `<div class="tarjeta col g4" style="padding:16px"><span class="precio" style="font-size:30px">${num}</span><span style="font-size:14px;font-weight:700">${txt}</span>${sub ? `<span class="small">${sub}</span>` : ''}</div>`;
+  const vistos = [...d.anuncios].filter((a) => a.vistas > 0).sort((a, b) => b.vistas - a.vistas).slice(0, 5);
+  const sinVistas = d.anuncios.filter((a) => a.status === 'activo' && a.vistas === 0);
+  const invitan = [...d.personas].filter((p) => p.invitados > 0).sort((a, b) => b.invitados - a.invitados).slice(0, 5);
+  const actividad = [...d.personas].sort((a, b) => new Date(b.last_seen || 0) - new Date(a.last_seen || 0));
+  const fila = (izq, der, i) => `<div class="fila entre" style="padding:12px 0;${i ? 'border-top:1px solid var(--line)' : ''}">${izq}${der}</div>`;
+  const persona = (p) => `<a href="#/p/${p.id}" class="fila" style="gap:10px;text-decoration:none;color:var(--ink);min-width:0">${avatar(p, 32)}<span style="font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span></a>`;
+  $app.innerHTML = `<div class="pantalla" style="padding-bottom:48px">
+    <div class="fila entre"><a class="redondo" href="#/p/yo" aria-label="Volver">${I.volver}</a><span class="caption" style="color:var(--muted)">Solo lo ven los administradores</span><span style="width:44px"></span></div>
+    <h1 class="h-1">Panel</h1>
+
+    <section class="col g12"><div class="grilla">
+      ${tile(t.personas, t.personas === 1 ? 'Persona' : 'Personas', `${t.activos_7d} abrieron la app esta semana`)}
+      ${tile(t.activos, 'Anuncios activos', `${pesos(t.monto_publicado)} publicados`)}
+      ${tile(t.vendidos, t.vendidos === 1 ? 'Venta' : 'Ventas', `${pesos(t.monto_vendido)} vendidos`)}
+      ${tile(t.vistas, 'Vistas', 'Personas distintas por anuncio')}
+    </div></section>
+
+    <section class="col g12"><h2 class="h-2">Crecimiento</h2><p class="small">Últimas 8 semanas.</p>
+      <div class="tarjeta col g4" style="padding:16px"><span style="font-size:15px;font-weight:700">Personas nuevas</span>${columnas(d.semanas, 'personas', '#3c0443')}</div>
+      <div class="tarjeta col g4" style="padding:16px"><span style="font-size:15px;font-weight:700">Anuncios publicados</span>${columnas(d.semanas, 'anuncios', '#7a2cc0')}</div>
+      <div class="tarjeta col g4" style="padding:16px"><span style="font-size:15px;font-weight:700">Ventas</span>${columnas(d.semanas, 'ventas', '#0e7c3d')}</div>
+    </section>
+
+    <section class="col g12"><h2 class="h-2">Árbol de invitaciones</h2>
+      <p class="small">Cada persona cuelga de quien la invitó. Deslizá para ver todo el árbol.</p>
+      <div class="tarjeta col g8" style="padding:16px"><span style="font-size:15px;font-weight:700">Cómo se multiplica</span>
+        ${gen.map((n, g) => `<div class="fila" style="gap:10px"><span class="small" style="width:92px;flex:none">${g === 0 ? 'Fundadores' : `Generación ${g}`}</span><span style="height:22px;border-radius:999px;background:${g === 0 ? 'var(--ink)' : 'var(--lila)'};width:${Math.max(8, (n / maxGen) * 100)}%;max-width:calc(100% - 140px)"></span><span style="font-size:14px;font-weight:700">${n}</span></div>`).join('')}
+      </div>
+      <div class="tarjeta arbol" style="padding:8px 0 20px"><ul>${raices.map(nodo).join('')}</ul></div>
+      ${invitan.length ? `<div class="tarjeta" style="padding:4px 16px"><div style="padding:12px 0 0;font-size:15px;font-weight:700">Quienes más invitaron</div>${invitan.map((p, i) => fila(persona(p), `<span class="tag tag-lila">${p.invitados} ${p.invitados === 1 ? 'persona' : 'personas'}</span>`, i)).join('')}</div>` : ''}
+    </section>
+
+    <section class="col g12"><h2 class="h-2">Anuncios</h2>
+      <div class="tarjeta" style="padding:4px 16px"><div style="padding:12px 0 0;font-size:15px;font-weight:700">Los más vistos</div>
+        ${vistos.length ? vistos.map((a, i) => fila(`<a href="#/a/${a.id}" class="col" style="gap:2px;text-decoration:none;color:var(--ink);min-width:0"><span style="font-size:15px;font-weight:700">${esc(a.title)}</span><span class="small">${esc(P[a.seller]?.name || '')} · ${pesos(a.price)}${a.status === 'vendido' ? ' · vendido' : ''}</span></a>`, `<span class="tag tag-lila" style="flex:none">${a.vistas} ${a.vistas === 1 ? 'vista' : 'vistas'}</span>`, i)).join('') : '<p class="small" style="padding:12px 0">Todavía no hay vistas.</p>'}
+      </div>
+      <div class="tarjeta" style="padding:4px 16px"><div style="padding:12px 0 0;font-size:15px;font-weight:700">Sin vistas todavía <span class="small">(${sinVistas.length})</span></div>
+        ${sinVistas.length ? sinVistas.slice(0, 8).map((a, i) => fila(`<a href="#/a/${a.id}" style="font-size:15px;font-weight:700;text-decoration:none;color:var(--ink)">${esc(a.title)}</a>`, `<span class="small" style="flex:none">${esc(P[a.seller]?.name || '')}</span>`, i)).join('') : '<p class="small" style="padding:12px 0">Todos los anuncios activos tienen al menos una vista.</p>'}
+      </div>
+      <div class="tarjeta" style="padding:4px 16px;overflow-x:auto"><div style="padding:12px 0 8px;font-size:15px;font-weight:700">Por rubro</div>
+        <table class="tabla"><thead><tr><th>Rubro</th><th>Activos</th><th>Vendidos</th><th>Precio prom.</th></tr></thead><tbody>
+        ${d.categorias.map((c) => `<tr><td>${esc(c.name)}</td><td>${c.activos}</td><td>${c.vendidos}</td><td>${c.precio_promedio != null ? pesos(c.precio_promedio) : '—'}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </section>
+
+    <section class="col g12"><h2 class="h-2">Actividad</h2><p class="small">Ordenado por la última vez que abrieron la app.</p>
+      <div class="tarjeta" style="padding:4px 16px;overflow-x:auto">
+        <table class="tabla"><thead><tr><th>Persona</th><th>Publicó</th><th>Vendió</th><th>Última vez</th></tr></thead><tbody>
+        ${actividad.map((p) => { const viejo = !p.last_seen || Date.now() - new Date(p.last_seen) > 14 * 864e5;
+          return `<tr><td>${persona(p)}</td><td>${p.activos + p.vendidos}</td><td>${p.vendidos}</td><td>${viejo ? `<span class="tag tag-vendido">${hace(p.last_seen)}</span>` : hace(p.last_seen)}</td></tr>`; }).join('')}
+        </tbody></table>
+      </div>
+    </section>
+  </div>`;
+  const arbol = document.querySelector('.arbol');
+  if (arbol) arbol.scrollLeft = (arbol.scrollWidth - arbol.clientWidth) / 2;
 }
 
 /* ---------- invitar ---------- */
