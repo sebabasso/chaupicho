@@ -81,13 +81,14 @@ function tabs(activa) {
   return `<nav class="tabs" aria-label="Secciones"><div class="dentro">${t('#/', 'inicio', I.casa, 'Inicio')}${t('#/publicar', 'publicar', I.mas, 'Publicar')}${t('#/invitar', 'invitar', I.invitar(), 'Invitar')}${t('#/p/yo', 'yo', I.persona, 'Mi perfil')}</div></nav>`;
 }
 
-function card(l) {
+const vistasTxt = (n) => n === 1 ? '1 persona lo vio' : `${n} personas lo vieron`;
+function card(l, vistas) {
   const s = st.people[l.seller];
   const f = fotoUrl(l.photos?.[0]);
   return `<a class="card" href="#/a/${l.id}">
     <div class="foto">${f ? `<img src="${esc(f)}" alt="" loading="lazy">` : I.foto()}<span class="tag">${esc(l.categories?.name || '')}</span>${l.status === 'vendido' ? '<span class="tag tag-vendido">Vendido</span>' : ''}</div>
     <div class="info"><span class="precio" style="font-size:20px">${pesos(l.price)}</span><span class="titulo">${esc(l.title)}</span>
-    <span class="small">${esc(s?.name || '')}${s?.barrio ? ' · ' + esc(s.barrio) : ''}</span>${l.seller !== st.me?.id ? pill(grado(l.seller)) : ''}</div></a>`;
+    <span class="small">${esc(s?.name || '')}${s?.barrio ? ' · ' + esc(s.barrio) : ''}</span>${l.seller !== st.me?.id ? pill(grado(l.seller)) : ''}${vistas != null ? `<span class="tag tag-lila">${'<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'}${vistasTxt(vistas)}</span>` : ''}</div></a>`;
 }
 
 /* ---------- datos ---------- */
@@ -351,10 +352,13 @@ async function vDetalle(id) {
   const s = st.people[l.seller] || {};
   const mio = l.seller === st.me.id;
   const fotos = (l.photos || []).map(fotoUrl);
+  let vistasMias = null;
+  if (mio) { const { data: vv } = await sb.rpc('mis_vistas'); vistasMias = (vv || []).find((x) => x.listing_id === l.id)?.vistas || 0; }
+  else sb.rpc('registrar_vista', { p_id: l.id }).then(() => {}, () => {});
   const share = waShare(`¡Mirá esto en Chaupicho! ${l.title} a ${pesos(l.price)}. ${linkAnuncio(l.id)}`);
   const iconoEntrega = l.delivery_type === 'retiro' ? I.pin : l.delivery_type === 'envio' ? I.camion : I.chat(18);
   $app.innerHTML = `<div class="galeria">
-      ${fotos.length ? `<div class="tira" id="tira">${fotos.map((f, i) => `<img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(l.title)}">`).join('')}</div>` : `<div class="sin-foto">${I.foto(56)}</div>`}
+      ${fotos.length ? `<div class="tira" id="tira">${fotos.map((f, i) => `<img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(l.title)}" data-ampliar="${i}" style="cursor:zoom-in">`).join('')}</div>` : `<div class="sin-foto">${I.foto(56)}</div>`}
       <button class="redondo izq" type="button" id="atras" aria-label="Volver">${I.volver}</button>
       <a class="redondo der" href="${share}" target="_blank" rel="noopener" aria-label="Compartir por WhatsApp">${I.compartir()}</a>
       ${fotos.length > 1 ? `<div class="puntos" aria-hidden="true">${fotos.map((_, i) => `<span class="${i ? '' : 'on'}"></span>`).join('')}</div>` : ''}
@@ -363,7 +367,7 @@ async function vDetalle(id) {
       <div class="col g8"><span class="tag tag-cat">${esc(l.categories?.name)}</span>
         <h1 class="h-1">${esc(l.title)}</h1>
         <span class="precio" style="font-size:44px;line-height:.95;letter-spacing:-1.6px">${pesos(l.price)}</span>
-        ${l.status === 'vendido' ? '<span class="tag tag-vendido">Vendido</span>' : ''}</div>
+        ${l.status === 'vendido' ? '<span class="tag tag-vendido">Vendido</span>' : ''}${vistasMias != null ? `<span class="tag tag-lila">${'<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'}${vistasTxt(vistasMias)}</span>` : ''}</div>
       <div class="fila" style="gap:10px"><span class="icono-cuadro" style="background:var(--lila-soft)">${iconoEntrega}</span><span class="col" style="gap:1px"><span class="caption" style="color:var(--muted)">Entrega</span><span style="font-size:15px;font-weight:700">${esc(entregaTexto(l))}</span></span></div>
       ${l.description ? `<p style="white-space:pre-line">${esc(l.description)}</p>` : ''}
       <a class="tarjeta vendedor" href="#/p/${l.seller}">${avatar(s)}
@@ -377,6 +381,7 @@ async function vDetalle(id) {
     </div></div>`;
   document.getElementById('atras').onclick = () => (history.length > 1 ? history.back() : go('#/'));
   const tira = document.getElementById('tira');
+  document.querySelectorAll('[data-ampliar]').forEach((im) => (im.onclick = () => visor(fotos, Number(im.dataset.ampliar), l.title)));
   if (tira && fotos.length > 1) tira.onscroll = () => { const i = Math.round(tira.scrollLeft / tira.clientWidth); document.querySelectorAll('.puntos span').forEach((p, k) => p.classList.toggle('on', k === i)); };
   if (mio) {
     document.getElementById('editar').onclick = () => { st.desdeDetalle = l.id; };
@@ -389,6 +394,27 @@ async function vDetalle(id) {
       vDetalle(l.id);
     };
   }
+}
+
+/* ---------- visor de fotos ---------- */
+function visor(fotos, inicio, titulo) {
+  const v = document.createElement('div');
+  v.className = 'visor'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', 'Fotos de ' + titulo);
+  v.innerHTML = `<div class="tira">${fotos.map((f, i) => `<div class="cuadro"><img src="${esc(f)}" alt="Foto ${i + 1} de ${esc(titulo)}"></div>`).join('')}</div>
+    <button type="button" class="redondo cerrar" aria-label="Cerrar">${I.cerrar}</button>
+    ${fotos.length > 1 ? `<span class="contador" aria-live="polite">${inicio + 1} / ${fotos.length}</span>` : ''}`;
+  document.body.appendChild(v);
+  document.body.style.overflow = 'hidden';
+  const tira = v.querySelector('.tira');
+  requestAnimationFrame(() => { tira.scrollLeft = inicio * tira.clientWidth; });
+  const cont = v.querySelector('.contador');
+  tira.onscroll = () => { if (cont) cont.textContent = `${Math.round(tira.scrollLeft / tira.clientWidth) + 1} / ${fotos.length}`; };
+  const cerrar = () => { v.remove(); document.body.style.overflow = ''; window.removeEventListener('keydown', tecla); window.removeEventListener('hashchange', cerrar); };
+  const tecla = (e) => { if (e.key === 'Escape') cerrar(); };
+  v.querySelector('.cerrar').onclick = cerrar;
+  window.addEventListener('keydown', tecla);
+  window.addEventListener('hashchange', cerrar);
+  v.querySelector('.cerrar').focus();
 }
 
 /* ---------- publicar ---------- */
@@ -559,6 +585,8 @@ async function vPerfil(id) {
   const q = sb.from('listings').select('*, categories(name)').eq('seller', id).order('created_at', { ascending: false });
   const [{ data: ls_ }, cad] = await Promise.all([yo ? q : q.eq('status', 'activo'), yo ? Promise.resolve({ data: [] }) : sb.rpc('chain_to', { target: id })]);
   const lista = ls_ || [];
+  let vistas = {};
+  if (yo) { const { data: vv } = await sb.rpc('mis_vistas'); vistas = Object.fromEntries((vv || []).map((x) => [x.listing_id, x.vistas])); }
   const activos = lista.filter((l) => l.status === 'activo').length;
   const cadena = cad.data || [];
   const chainHtml = cadena.map((c, i) => `${i ? '<span class="linea" aria-hidden="true"></span>' : ''}<span class="eslabon">${avatar(st.people[c.id] || c, 40, c.id === st.me.id)}<span>${c.id === st.me.id ? 'Vos' : esc(c.name)}</span></span>`).join('');
@@ -569,7 +597,7 @@ async function vPerfil(id) {
     ${!yo && cadena.length > 1 ? `<div class="tarjeta col g12" style="padding:16px"><span class="fila entre"><span style="font-size:15px;font-weight:700">Cómo llegás a ${esc(p.name)}</span>${pill(grado(id))}</span><div class="cadena" role="img" aria-label="${esc(cadena.map((c) => (c.id === st.me.id ? 'Vos' : c.name)).join(', '))}">${chainHtml}</div></div>` : ''}
     ${!yo ? `<a class="btn btn-primario ancho" href="${waChat(p.whatsapp, `¡Hola ${p.name}! Te escribo desde Chaupicho.`)}" target="_blank" rel="noopener">${I.chat()}Escribile a ${esc(p.name)} por WhatsApp</a>` : ''}
     <section class="col g12"><h2 class="h-2">${yo ? 'Lo que publicaste' : 'Lo que vende ' + esc(p.name)}</h2>
-      ${lista.length ? `<div class="grilla">${lista.map(card).join('')}</div>` : `<div class="vacio"><p class="small">${yo ? 'Todavía no publicaste nada.' : 'No tiene nada publicado por ahora.'}</p>${yo ? '<a class="btn btn-primario" href="#/publicar">Publicar algo</a>' : ''}</div>`}
+      ${lista.length ? `<div class="grilla">${lista.map((l) => card(l, yo ? (vistas[l.id] || 0) : null)).join('')}</div>` : `<div class="vacio"><p class="small">${yo ? 'Todavía no publicaste nada.' : 'No tiene nada publicado por ahora.'}</p>${yo ? '<a class="btn btn-primario" href="#/publicar">Publicar algo</a>' : ''}</div>`}
     </section></div></div>
     ${tabs(yo ? 'yo' : '')}`;
   document.getElementById('atras')?.addEventListener('click', () => (history.length > 1 ? history.back() : go('#/')));

@@ -141,3 +141,12 @@ legend{padding:0;margin-bottom:8px}
 #toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:20;max-width:calc(100% - 32px)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* visor de fotos */
+.visor{position:fixed;inset:0;z-index:30;background:#140016}
+.visor .tira{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.visor .tira::-webkit-scrollbar{display:none}
+.visor .cuadro{flex:none;width:100%;height:100%;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;padding:72px 0 56px}
+.visor .cuadro img{max-width:100%;max-height:100%;object-fit:contain}
+.visor .cerrar{position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;background:rgba(255,255,255,.14);color:#fff;box-shadow:none}
+.visor .contador{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-weight:600;background:rgba(255,255,255,.14);padding:6px 12px;border-radius:999px}
