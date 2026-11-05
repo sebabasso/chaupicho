@@ -130,6 +130,7 @@ async function render() {
       case 'publicado': return await vPublicado(parts[1]);
       case 'p': return await vPerfil(parts[1] === 'yo' ? st.me.id : parts[1]);
       case 'invitar': return vInvitar();
+      case 'clave': return vClave();
       case 'i': return go('#/');
       default: return go('#/');
     }
@@ -137,31 +138,86 @@ async function render() {
 }
 
 /* ---------- pantallas sin cuenta ---------- */
-async function vEntrar(msgInv) {
+async function vEntrar(msgInv, modo) {
   const cod = ls.get('chaupicho_codigo');
   let quien = null;
   if (cod) { const { data } = await sb.rpc('inviter_name', { p_code: cod }); quien = data; }
+  modo ||= quien ? 'crear' : 'entrar';
+  const crear = modo === 'crear';
+  if (!ls.get('chaupicho_siguiente') && location.hash.startsWith('#/a/')) ls.set('chaupicho_siguiente', location.hash.split('?')[0]);
   $app.innerHTML = `<div class="pantalla" style="padding-top:40px">
     ${logo}
     <h1 class="h-xl">Un mercado de cosas usadas entre amigos.</h1>
-    ${quien ? `<div class="tarjeta fila" style="padding:12px 16px">${avatar({ id: cod, name: quien })}<p><b>${esc(quien)}</b> te invitó a Chaupicho.</p></div>` : '<p>Chaupicho es solo por invitación. Si ya sos parte, entrá con tu mail.</p>'}
+    ${quien ? `<div class="tarjeta fila" style="padding:12px 16px">${avatar({ id: cod, name: quien })}<p><b>${esc(quien)}</b> te invitó a Chaupicho.</p></div>` : '<p>Chaupicho es solo por invitación. Si ya sos parte, entrá con tu mail y tu contraseña.</p>'}
     <form id="f" class="col g12">
+      <h2 class="h-2">${crear ? 'Creá tu cuenta' : 'Entrá a tu cuenta'}</h2>
       <label class="campo"><span>Tu mail</span><input class="entrada" type="email" name="email" required autocomplete="email" inputmode="email" placeholder="nombre@mail.com"></label>
-      <button class="btn btn-primario ancho" type="submit">Mandame el link para entrar</button>
-      <div id="msg"></div>
+      <label class="campo"><span>${crear ? 'Elegí una contraseña' : 'Tu contraseña'}</span><input class="entrada" type="password" name="clave" required minlength="6" autocomplete="${crear ? 'new-password' : 'current-password'}">${crear ? '<span class="ayuda">Mínimo 6 caracteres.</span>' : ''}</label>
+      <div id="msg">${msgInv ? `<p class="error">${esc(msgInv)}</p>` : ''}</div>
+      <button class="btn btn-primario ancho" type="submit">${crear ? 'Crear cuenta' : 'Entrar'}</button>
+      <button class="btn btn-borde ancho" type="button" id="cambiar">${crear ? 'Ya tengo cuenta' : 'Crear una cuenta nueva'}</button>
+      ${crear ? '' : '<button class="btn ancho" type="button" id="olvide" style="background:transparent;color:var(--lila-ink);height:44px">Me olvidé la contraseña</button>'}
     </form>
-    ${msgInv ? `<p class="error">${esc(msgInv)}</p>` : ''}
   </div>`;
+  const f = document.getElementById('f');
+  const m = document.getElementById('msg');
+  document.getElementById('cambiar').onclick = () => vEntrar(null, crear ? 'entrar' : 'crear');
+  const olv = document.getElementById('olvide');
+  if (olv) olv.onclick = async () => {
+    const email = f.elements.email.value.trim();
+    if (!email) { m.innerHTML = '<p class="error">Escribí tu mail arriba y tocá de nuevo.</p>'; return; }
+    olv.disabled = true;
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL });
+    m.innerHTML = error ? `<p class="error">No pudimos mandar el mail: ${esc(error.message)}</p>` : `<div class="tarjeta" style="padding:12px 16px"><p>Te mandamos un mail a <b>${esc(email)}</b> para elegir una contraseña nueva.</p></div>`;
+    olv.disabled = false;
+  };
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = f.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = crear ? 'Creando…' : 'Entrando…';
+    const email = f.elements.email.value.trim(), password = f.elements.clave.value;
+    const res = crear ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: APP_URL } }) : await sb.auth.signInWithPassword({ email, password });
+    const err = res.error;
+    if (err) {
+      const txt = /invalid login/i.test(err.message) ? 'El mail o la contraseña no coinciden.'
+        : /already registered/i.test(err.message) ? 'Ese mail ya tiene cuenta: tocá "Ya tengo cuenta".'
+        : /password/i.test(err.message) ? 'La contraseña tiene que tener al menos 6 caracteres.'
+        : err.message;
+      m.innerHTML = `<p class="error">${esc(txt)}</p>`; btn.disabled = false; btn.textContent = crear ? 'Crear cuenta' : 'Entrar'; return;
+    }
+    if (!res.data.session) { f.innerHTML = `<div class="tarjeta col g8" style="padding:16px"><span class="h-2">Confirmá tu mail</span><p>Te mandamos un mail a <b>${esc(email)}</b> para confirmar la cuenta.</p></div>`; return; }
+    await entrarCon(res.data.session);
+  };
+}
+
+async function entrarCon(session) {
+  st.session = session;
+  await cargarYo();
+  if (st.me) {
+    await cargarComunidad();
+    const sig = ls.get('chaupicho_siguiente'); ls.set('chaupicho_siguiente', null);
+    if (sig && location.hash !== sig) { location.hash = sig; return; }
+  }
+  if (!st.me || location.hash === '#/entrar') { location.hash = '#/'; if (!st.me) render(); return; }
+  render();
+}
+
+function vClave(recuperando) {
+  $app.innerHTML = `<div class="pantalla" style="padding-top:32px">
+    ${recuperando ? logo : `<a class="redondo" href="#/p/yo" aria-label="Volver">${I.volver}</a>`}
+    <h1 class="h-1">${recuperando ? 'Elegí una contraseña nueva' : 'Tu contraseña'}</h1>
+    <p>${recuperando ? 'Con esta vas a entrar desde ahora.' : 'Ponela o cambiala para poder entrar desde cualquier celu con tu mail.'}</p>
+    <form id="f" class="col g12">
+      <label class="campo"><span>Contraseña nueva</span><input class="entrada" type="password" name="clave" required minlength="6" autocomplete="new-password"><span class="ayuda">Mínimo 6 caracteres.</span></label>
+      <div id="msg"></div>
+      <button class="btn btn-primario ancho" type="submit">Guardar contraseña</button>
+    </form></div>`;
   const f = document.getElementById('f');
   f.onsubmit = async (e) => {
     e.preventDefault();
-    const btn = f.querySelector('button'); btn.disabled = true; btn.textContent = 'Mandando…';
-    if (!ls.get('chaupicho_siguiente')) ls.set('chaupicho_siguiente', location.hash.startsWith('#/a/') ? location.hash.split('?')[0] : '#/');
-    const email = f.email.value.trim();
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: APP_URL } });
-    const m = document.getElementById('msg');
-    if (error) { m.innerHTML = `<p class="error">No pudimos mandar el mail: ${esc(error.message)}</p>`; btn.disabled = false; btn.textContent = 'Mandame el link para entrar'; return; }
-    f.innerHTML = `<div class="tarjeta col g8" style="padding:16px"><span class="h-2">Revisá tu mail</span><p>Te mandamos un link a <b>${esc(email)}</b>. Abrilo desde este mismo celu para entrar.</p></div>`;
+    const btn = f.querySelector('[type=submit]'); btn.disabled = true;
+    const { error } = await sb.auth.updateUser({ password: f.elements.clave.value });
+    if (error) { document.getElementById('msg').innerHTML = `<p class="error">${esc(error.message)}</p>`; btn.disabled = false; return; }
+    toast('Contraseña guardada'); go('#/p/yo');
   };
 }
 
@@ -445,7 +501,7 @@ async function vPerfil(id) {
   const cadena = cad.data || [];
   const chainHtml = cadena.map((c, i) => `${i ? '<span class="linea" aria-hidden="true"></span>' : ''}<span class="eslabon">${avatar(st.people[c.id] || c, 40, c.id === st.me.id)}<span>${c.id === st.me.id ? 'Vos' : esc(c.name)}</span></span>`).join('');
   $app.innerHTML = `<div style="background:linear-gradient(180deg,#fdebea 0%,var(--bg) 260px)"><div class="pantalla con-tabs">
-    <div class="fila entre">${yo ? logo : `<button class="redondo" type="button" id="atras" aria-label="Volver">${I.volver}</button>`}${yo ? '<button class="pill-btn" type="button" id="salir" style="border:0;cursor:pointer">Salir</button>' : ''}</div>
+    <div class="fila entre">${yo ? logo : `<button class="redondo" type="button" id="atras" aria-label="Volver">${I.volver}</button>`}${yo ? '<span class="fila g8"><a class="pill-btn" href="#/clave">Contraseña</a><button class="pill-btn" type="button" id="salir" style="border:0;cursor:pointer">Salir</button></span>' : ''}</div>
     <div class="fila" style="gap:16px">${avatar(p, 72)}<div class="col g4"><h1 class="h-1">${esc(p.name)}${yo ? ' <span class="small">(vos)</span>' : ''}</h1>
       <span class="small">${p.barrio ? esc(p.barrio) + ' · ' : ''}${activos === 1 ? '1 cosa a la venta' : activos + ' cosas a la venta'}</span></div></div>
     ${!yo && cadena.length > 1 ? `<div class="tarjeta col g12" style="padding:16px"><span class="fila entre"><span style="font-size:15px;font-weight:700">Cómo llegás a ${esc(p.name)}</span>${pill(grado(id))}</span><div class="cadena" role="img" aria-label="${esc(cadena.map((c) => (c.id === st.me.id ? 'Vos' : c.name)).join(', '))}">${chainHtml}</div></div>` : ''}
@@ -477,8 +533,15 @@ function vInvitar() {
 /* ---------- arranque ---------- */
 async function arrancar() {
   const veniaDelMail = /access_token|error_description/.test(location.hash);
+  const recuperando = /type=recovery/.test(location.hash);
   const { data } = await sb.auth.getSession();
   st.session = data.session;
+  if (recuperando && st.session) {
+    history.replaceState(null, '', APP_URL + '#/clave');
+    await cargarYo();
+    if (st.me) await cargarComunidad();
+    return vClave(true);
+  }
   if (veniaDelMail) {
     const sig = st.session ? '#/' : '#/entrar';
     history.replaceState(null, '', APP_URL + sig);
@@ -492,6 +555,7 @@ async function arrancar() {
     }
   }
   sb.auth.onAuthStateChange(async (ev, s) => {
+    if (ev === 'PASSWORD_RECOVERY') { st.session = s; await cargarYo(); if (st.me) await cargarComunidad(); return vClave(true); }
     if (ev === 'SIGNED_IN' && !st.session) { st.session = s; await cargarYo(); if (st.me) await cargarComunidad(); render(); }
     if (ev === 'SIGNED_OUT') { st.session = null; st.me = null; }
   });
