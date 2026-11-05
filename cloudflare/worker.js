@@ -49,7 +49,7 @@ export default {
     const url = new URL(request.url);
     const [tipo, id] = url.pathname.split('/').filter(Boolean);
     const codigo = (url.searchParams.get('i') || '').slice(0, 40);
-    let datos = { titulo: 'Chaupicho', descripcion: 'Un mercado de cosas usadas entre amigos.', imagen: null, destino: APP, url: url.href };
+    let datos = { titulo: 'Chaupicho', descripcion: 'Un mercado de cosas usadas entre amigos.', imagen: `${APP}og-invitacion.jpg`, destino: APP, url: url.href };
 
     try {
       if (tipo === 'a' && /^[0-9a-f-]{36}$/i.test(id || '')) {
