@@ -97,7 +97,7 @@ async function cargarComunidad() {
   sb.rpc('marcar_visto').then(() => {}, () => {});
   const [c, p, d] = await Promise.all([
     sb.from('categories').select('id,name').order('id'),
-    sb.from('profiles').select('id,name,barrio,whatsapp,invited_by,invite_code,avatar'),
+    sb.from('profiles').select('id,name,barrio,whatsapp,invited_by,invite_code,avatar,is_founder'),
     sb.rpc('degrees'),
   ]);
   st.cats = c.data || [];
@@ -656,9 +656,13 @@ async function vPanel() {
   if (error) throw error;
   const P = Object.fromEntries(d.personas.map((p) => [p.id, p]));
   const hijos = {}; d.personas.forEach((p) => { if (p.invited_by && P[p.invited_by]) (hijos[p.invited_by] ||= []).push(p); });
-  const raices = d.personas.filter((p) => !p.invited_by || !P[p.invited_by]);
+  const fundadores = d.personas.filter((p) => st.people[p.id]?.is_founder);
+  const esFund = new Set(fundadores.map((p) => p.id));
+  fundadores.forEach((f) => { if (hijos[f.id]) hijos[f.id] = hijos[f.id].filter((h) => !esFund.has(h.id)); });
+  const raices = d.personas.filter((p) => !esFund.has(p.id) && (!p.invited_by || !P[p.invited_by]));
   // generaciones
   const gen = []; const marcar = (p, g) => { gen[g] = (gen[g] || 0) + 1; (hijos[p.id] || []).forEach((h) => marcar(h, g + 1)); };
+  fundadores.forEach((f) => marcar(f, 0));
   raices.forEach((r) => marcar(r, 0));
   const maxGen = Math.max(...gen);
   const nodo = (p) => `<li><a href="#/p/${p.id}" class="nodo">${avatar(p, 36)}<span class="nombre">${esc(p.name)}</span>${p.invitados ? `<span class="sub">invitó a ${p.invitados}</span>` : ''}</a>${hijos[p.id] ? `<ul>${hijos[p.id].map(nodo).join('')}</ul>` : ''}</li>`;
@@ -693,7 +697,7 @@ async function vPanel() {
         ${gen.map((n, g) => `<div class="fila" style="gap:10px"><span class="small" style="width:92px;flex:none">${g === 0 ? 'Fundadores' : `Generación ${g}`}</span><span style="height:22px;border-radius:999px;background:${g === 0 ? 'var(--ink)' : 'var(--lila)'};width:${Math.max(8, (n / maxGen) * 100)}%;max-width:calc(100% - 140px)"></span><span style="font-size:14px;font-weight:700">${n}</span></div>`).join('')}
       </div>
       ${invitan.length ? `<div class="tarjeta" style="padding:4px 16px"><div style="padding:12px 0 0;font-size:15px;font-weight:700">Quienes más invitaron</div>${invitan.map((p, i) => fila(persona(p), `<span class="tag tag-lila">${p.invitados} ${p.invitados === 1 ? 'persona' : 'personas'}</span>`, i)).join('')}</div>` : ''}</div>
-      <div class="tarjeta arbol" style="padding:8px 0 20px"><ul>${raices.map(nodo).join('')}</ul></div></div>
+      <div class="tarjeta arbol" style="padding:8px 0 20px"><ul>${fundadores.length ? `<li><div class="nodo pareja"><span class="fila" style="gap:0">${fundadores.map((f, i) => `<a href="#/p/${f.id}" style="margin-left:${i ? -8 : 0}px;border-radius:999px;box-shadow:0 0 0 3px #fff;display:flex;text-decoration:none">${avatar(f, 40)}</a>`).join('')}</span><span class="nombre" style="max-width:none">${fundadores.map((f) => esc(f.name)).join(' y ')}</span><span class="sub">${fundadores.length > 1 ? 'Fundadores' : 'Fundador'}</span></div>${(() => { const kids = fundadores.flatMap((f) => hijos[f.id] || []); return kids.length ? `<ul>${kids.map(nodo).join('')}</ul>` : ''; })()}</li>` : ''}${raices.map(nodo).join('')}</ul></div></div>
       </section>
 
     <section class="col g12"><h2 class="h-2">Anuncios</h2><div class="panel-3">
