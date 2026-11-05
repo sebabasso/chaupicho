@@ -33,9 +33,9 @@ function waNum(raw) {
 }
 const waChat = (num, txt) => `https://wa.me/${num}?text=${encodeURIComponent(txt)}`;
 const waShare = (txt) => `https://wa.me/?text=${encodeURIComponent(txt)}`;
-const LINKS = 'https://ver.chaupicho.app';
-const linkAnuncio = (id) => `${LINKS}/a/${id}?i=${st.me?.invite_code || ''}`;
-const linkInvitacion = () => `${LINKS}/i/${st.me?.invite_code}`;
+const LINKS = null; // 'https://ver.chaupicho.app' cuando el worker esté andando
+const linkAnuncio = (id) => LINKS ? `${LINKS}/a/${id}?i=${st.me?.invite_code || ''}` : `${APP_URL}#/a/${id}?i=${st.me?.invite_code || ''}`;
+const linkInvitacion = () => LINKS ? `${LINKS}/i/${st.me?.invite_code}` : `${APP_URL}#/i/${st.me?.invite_code}`;
 function entregaTexto(l) {
   if (l.delivery_type === 'retiro') return 'Se retira por ' + (l.delivery_place || 'a definir');
   if (l.delivery_type === 'envio') return 'Envío a domicilio';
