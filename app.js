@@ -411,7 +411,7 @@ async function achicar(file) {
 
 function vPublicar(err) {
   const b = (st.borrador ||= { fotos: [], title: '', price: '', cat: null, desc: '', tipo: 'retiro', lugar: st.me.barrio || '', nuevaCat: false });
-  $app.innerHTML = `<div class="pantalla" style="padding-bottom:120px">
+  $app.innerHTML = `<div class="pantalla" style="padding-bottom:48px">
     <div class="fila entre"><a class="redondo" href="#/" aria-label="Cerrar">${I.cerrar}</a><span class="caption" style="color:var(--muted)">Nuevo anuncio</span><span style="width:44px"></span></div>
     <h1 class="h-1">¿Qué vendés?</h1>
     <form id="f" class="col" style="gap:20px" novalidate>
@@ -422,13 +422,13 @@ function vPublicar(err) {
         </div>
         <span class="ayuda">La primera es la que ven tus amigos en el inicio. Hasta ${MAX_FOTOS}.</span></div>
       <label class="campo"><span>Título</span><input class="entrada" name="title" maxlength="80" placeholder="Ej: Cochecito plegable" value="${esc(b.title)}"></label>
+      <label class="campo"><span>Contá un poco</span><textarea class="entrada" name="desc" rows="3" maxlength="1000" placeholder="Estado, medidas, por qué lo vendés…">${esc(b.desc)}</textarea></label>
       <label class="campo"><span>Precio</span><span class="entrada fila" style="gap:4px"><span class="precio" style="font-size:20px">$</span><input name="price" inputmode="numeric" placeholder="0" value="${esc(b.price)}" style="flex:1;border:0;outline:none;background:transparent;font-family:var(--display);font-weight:800;font-size:20px;color:var(--ink);min-width:0"></span></label>
       <fieldset><legend class="leyenda">Categoría</legend><div class="chips-wrap">
         ${st.cats.map((c) => `<button type="button" class="chip${b.cat === c.id ? ' on' : ''}" data-elegir="${c.id}" aria-pressed="${b.cat === c.id}">${esc(c.name)}</button>`).join('')}
         ${b.nuevaCat ? '' : '<button type="button" class="chip nueva" id="nueva">+ Nueva categoría</button>'}</div>
         ${b.nuevaCat ? `<div class="fila g8" style="margin-top:8px"><input class="entrada" id="nombreCat" maxlength="30" placeholder="Nombre de la categoría" aria-label="Nombre de la nueva categoría"><button type="button" class="btn btn-suave" id="crearCat">Agregar</button></div>` : ''}
       </fieldset>
-      <label class="campo"><span>Contá un poco</span><textarea class="entrada" name="desc" rows="3" maxlength="1000" placeholder="Estado, medidas, por qué lo vendés…">${esc(b.desc)}</textarea></label>
       <fieldset class="col g8"><legend class="leyenda">¿Cómo se entrega?</legend>
         <div class="opcion${b.tipo === 'retiro' ? ' on' : ''}" style="flex-direction:column;align-items:stretch;gap:10px;cursor:default">
           <label class="fila" style="cursor:pointer"><input type="radio" name="tipo" value="retiro"${b.tipo === 'retiro' ? ' checked' : ''}><span style="font-size:15px;font-weight:700">Se retira por…</span></label>
@@ -437,8 +437,8 @@ function vPublicar(err) {
         <label class="opcion${b.tipo === 'coordinar' ? ' on' : ''}"><input type="radio" name="tipo" value="coordinar"${b.tipo === 'coordinar' ? ' checked' : ''}><span class="col" style="gap:2px"><span style="font-size:15px;font-weight:700">A coordinar</span><span class="ayuda">Lo hablan por WhatsApp</span></span></label>
       </fieldset>
       ${err ? `<p class="error" id="err">${esc(err)}</p>` : ''}
-    </form></div>
-    <div class="barra-abajo"><div class="dentro"><button class="btn btn-primario" type="submit" form="f" id="pub">Publicar</button></div></div>`;
+      <button class="btn btn-primario ancho" type="submit" id="pub" style="height:56px;font-size:15px;margin-top:8px">Publicar</button>
+    </form></div>`;
 
   const f = document.getElementById('f');
   const guardar = () => { b.title = f.elements.title.value; b.price = f.price.value; b.desc = f.desc.value; if (f.lugar) b.lugar = f.lugar.value; };
