@@ -399,8 +399,9 @@ function vPublicar(err) {
       </fieldset>
       <label class="campo"><span>Contá un poco</span><textarea class="entrada" name="desc" rows="3" maxlength="1000" placeholder="Estado, medidas, por qué lo vendés…">${esc(b.desc)}</textarea></label>
       <fieldset class="col g8"><legend class="leyenda">¿Cómo se entrega?</legend>
-        <label class="opcion${b.tipo === 'retiro' ? ' on' : ''}" style="flex-wrap:wrap"><input type="radio" name="tipo" value="retiro"${b.tipo === 'retiro' ? ' checked' : ''}><span style="font-size:15px;font-weight:700">Se retira por…</span>
-          ${b.tipo === 'retiro' ? `<input class="entrada" name="lugar" maxlength="80" aria-label="Lugar de retiro" placeholder="Barrio, esquina o lugar" value="${esc(b.lugar)}" style="height:44px;border-radius:12px">` : ''}</label>
+        <div class="opcion${b.tipo === 'retiro' ? ' on' : ''}" style="flex-direction:column;align-items:stretch;gap:10px;cursor:default">
+          <label class="fila" style="cursor:pointer"><input type="radio" name="tipo" value="retiro"${b.tipo === 'retiro' ? ' checked' : ''}><span style="font-size:15px;font-weight:700">Se retira por…</span></label>
+          ${b.tipo === 'retiro' ? `<input class="entrada" name="lugar" maxlength="80" aria-label="Lugar de retiro" placeholder="Barrio, esquina o lugar" value="${esc(b.lugar)}" style="height:44px;border-radius:12px">` : ''}</div>
         <label class="opcion${b.tipo === 'envio' ? ' on' : ''}"><input type="radio" name="tipo" value="envio"${b.tipo === 'envio' ? ' checked' : ''}><span style="font-size:15px;font-weight:700">Envío a domicilio</span></label>
         <label class="opcion${b.tipo === 'coordinar' ? ' on' : ''}"><input type="radio" name="tipo" value="coordinar"${b.tipo === 'coordinar' ? ' checked' : ''}><span class="col" style="gap:2px"><span style="font-size:15px;font-weight:700">A coordinar</span><span class="ayuda">Lo hablan por WhatsApp</span></span></label>
       </fieldset>
