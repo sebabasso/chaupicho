@@ -82,14 +82,14 @@ function tabs(activa) {
   return `<nav class="tabs" aria-label="Secciones"><div class="dentro">${t('#/', 'inicio', I.casa, 'Inicio')}${t('#/publicar', 'publicar', I.mas, 'Publicar')}${t('#/invitar', 'invitar', I.invitar(), 'Invitar')}${t('#/p/yo', 'yo', I.persona, 'Mi perfil')}</div></nav>`;
 }
 
-const vistasTxt = (n) => n === 1 ? '1 persona lo vio' : `${n} personas lo vieron`;
+const vistasTxt = (n) => String(n);
 function card(l, vistas) {
   const s = st.people[l.seller];
   const f = fotoUrl(l.photos?.[0]);
   return `<a class="card" href="#/a/${l.id}">
     <div class="foto">${f ? `<img src="${esc(f)}" alt="" loading="lazy">` : I.foto()}<span class="tag">${esc(l.categories?.name || '')}</span>${l.status === 'vendido' ? '<span class="tag tag-vendido">Vendido</span>' : ''}</div>
     <div class="info"><span class="precio" style="font-size:20px">${pesos(l.price)}</span><span class="titulo">${esc(l.title)}</span>
-    <span class="small">${esc(s?.name || '')}${s?.barrio ? ' · ' + esc(s.barrio) : ''}</span>${l.seller !== st.me?.id ? pill(grado(l.seller)) : ''}${vistas != null ? `<span class="tag tag-lila">${'<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'}${vistasTxt(vistas)}</span>` : ''}</div></a>`;
+    <span class="small">${esc(s?.name || '')}${s?.barrio ? ' · ' + esc(s.barrio) : ''}</span>${l.seller !== st.me?.id ? pill(grado(l.seller)) : ''}${vistas != null ? `<span class="tag tag-lila" aria-label="${vistas === 1 ? '1 persona lo vio' : vistas + ' personas lo vieron'}">${'<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'}${vistasTxt(vistas)}</span>` : ''}</div></a>`;
 }
 
 /* ---------- datos ---------- */
