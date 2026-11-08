@@ -16,15 +16,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=22">
+<link rel="stylesheet" href="styles.css?v=23">
 <style>
 #splash{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#5a1066 0%,#3c0443 55%,#240228 100%);transition:opacity .45s cubic-bezier(.65,0,.35,1)}
 #splash.fuera{opacity:0;pointer-events:none}
 .splash-marca{display:flex;align-items:baseline;font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;font-weight:800;font-size:64px;letter-spacing:-2.5px;line-height:1;color:#fff}
 .splash-marca b{color:#f0716c}
-.splash-marca .l{display:inline-grid;grid-template-columns:0fr;opacity:0;animation:letra .42s cubic-bezier(.65,0,.35,1) forwards}
+.splash-marca .l{display:inline-grid;grid-template-columns:0fr;opacity:0;animation:letra .36s cubic-bezier(.4,0,.2,1) forwards}
 .splash-marca .l>span{overflow:hidden;min-width:0}
-.splash-marca .l:nth-child(2){animation-delay:0.300s}.splash-marca .l:nth-child(3){animation-delay:0.347s}.splash-marca .l:nth-child(4){animation-delay:0.479s}.splash-marca .l:nth-child(5){animation-delay:0.669s}.splash-marca .l:nth-child(6){animation-delay:0.881s}.splash-marca .l:nth-child(7){animation-delay:1.071s}.splash-marca .l:nth-child(8){animation-delay:1.203s}.splash-marca .l:nth-child(9){animation-delay:1.250s}
+.splash-marca .l:nth-child(2){animation-delay:0.300s}.splash-marca .l:nth-child(3){animation-delay:0.399s}.splash-marca .l:nth-child(4){animation-delay:0.513s}.splash-marca .l:nth-child(5){animation-delay:0.636s}.splash-marca .l:nth-child(6){animation-delay:0.764s}.splash-marca .l:nth-child(7){animation-delay:0.887s}.splash-marca .l:nth-child(8){animation-delay:1.001s}.splash-marca .l:nth-child(9){animation-delay:1.100s}
 @keyframes letra{from{grid-template-columns:0fr;opacity:0;transform:translateY(6px)}to{grid-template-columns:1fr;opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.splash-marca .l{animation:none;grid-template-columns:1fr;opacity:1}}
 </style>
@@ -34,6 +34,6 @@
 <script>window.__splash = Date.now(); setTimeout(function () { var s = document.getElementById('splash'); if (s) s.remove(); }, 9000);</script>
 <main id="app" aria-live="polite"><div class="cargando">Cargando…</div></main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script type="module" src="app.js?v=22"></script>
+<script type="module" src="app.js?v=23"></script>
 </body>
 </html>

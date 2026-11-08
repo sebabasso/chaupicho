@@ -776,7 +776,7 @@ async function arrancar() {
 }
 function ocultarSplash() {
   const sp = document.getElementById('splash'); if (!sp) return;
-  const falta = Math.max(0, 1750 - (Date.now() - (window.__splash || 0)));
+  const falta = Math.max(0, 1650 - (Date.now() - (window.__splash || 0)));
   setTimeout(() => { sp.classList.add('fuera'); setTimeout(() => sp.remove(), 400); }, falta);
 }
 arrancar().catch((e) => console.error(e)).finally(ocultarSplash);
