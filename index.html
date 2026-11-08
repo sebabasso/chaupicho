@@ -16,11 +16,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=20">
+<link rel="stylesheet" href="styles.css?v=21">
+<style>
+#splash{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#5a1066 0%,#3c0443 55%,#240228 100%);transition:opacity .35s ease}
+#splash.fuera{opacity:0;pointer-events:none}
+.splash-marca{display:flex;align-items:baseline;font-family:"Bricolage Grotesque",Figtree,system-ui,sans-serif;font-weight:800;font-size:64px;letter-spacing:-2.5px;line-height:1;color:#fff}
+.splash-marca b{color:#f0716c}
+.splash-marca .l{display:inline-block;max-width:0;opacity:0;overflow:hidden;animation:letra .22s ease-out forwards}
+.splash-marca .l:nth-child(2){animation-delay:.35s}.splash-marca .l:nth-child(3){animation-delay:.44s}.splash-marca .l:nth-child(4){animation-delay:.53s}.splash-marca .l:nth-child(5){animation-delay:.62s}
+.splash-marca .l:nth-child(6){animation-delay:.71s}.splash-marca .l:nth-child(7){animation-delay:.80s}.splash-marca .l:nth-child(8){animation-delay:.89s}.splash-marca .l:nth-child(9){animation-delay:.98s}
+@keyframes letra{to{max-width:1em;opacity:1}}
+@media (prefers-reduced-motion:reduce){.splash-marca .l{animation:none;max-width:none;opacity:1}}
+</style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="splash-marca"><span>c</span><span class="l">h</span><span class="l">a</span><span class="l">u</span><span class="l">p</span><span class="l">i</span><span class="l">c</span><span class="l">h</span><span class="l">o</span><b>.</b></div></div>
+<script>window.__splash = Date.now(); setTimeout(function () { var s = document.getElementById('splash'); if (s) s.remove(); }, 9000);</script>
 <main id="app" aria-live="polite"><div class="cargando">Cargando…</div></main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script type="module" src="app.js?v=20"></script>
+<script type="module" src="app.js?v=21"></script>
 </body>
 </html>

@@ -772,6 +772,11 @@ async function arrancar() {
     if (ev === 'SIGNED_IN' && !st.session) { st.session = s; await cargarYo(); if (st.me) await cargarComunidad(); render(); }
     if (ev === 'SIGNED_OUT') { st.session = null; st.me = null; }
   });
-  render();
+  await render();
 }
-arrancar();
+function ocultarSplash() {
+  const sp = document.getElementById('splash'); if (!sp) return;
+  const falta = Math.max(0, 1500 - (Date.now() - (window.__splash || 0)));
+  setTimeout(() => { sp.classList.add('fuera'); setTimeout(() => sp.remove(), 400); }, falta);
+}
+arrancar().catch((e) => console.error(e)).finally(ocultarSplash);
