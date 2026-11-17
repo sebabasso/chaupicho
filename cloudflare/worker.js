@@ -2,6 +2,7 @@
 // Arma la vista previa (foto, título y precio) que muestra WhatsApp
 // y redirige a la persona a la app.
 //   ver.chaupicho.app/a/<id>?i=<código>  →  anuncio
+//   ver.chaupicho.app/p/<id>?i=<código>  →  perfil
 //   ver.chaupicho.app/i/<código>         →  invitación
 
 const APP = 'https://chaupicho.app/';
@@ -9,6 +10,7 @@ const SUPABASE_URL = 'https://vuczrujklpdcmhaoqmuy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1Y3pydWprbHBkY21oYW9xbXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4MzI1NzgsImV4cCI6MjEwOTQwODU3OH0.7DGVUz7whunnt3yqA-2NeFEsZqnyGzjirRq1_Xn-TIc';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const foto = (path) => `${SUPABASE_URL}/storage/v1/object/public/fotos/${path.split('/').map(encodeURIComponent).join('/')}`;
 const pesos = (n) => '$' + Number(n || 0).toLocaleString('es-AR');
 
 async function rpc(fn, body) {
@@ -60,7 +62,17 @@ export default {
           const vendido = l.status === 'vendido';
           datos.titulo = `${l.title} · ${pesos(l.price)}${vendido ? ' (vendido)' : ''}`;
           datos.descripcion = `Lo vende ${l.seller_name} en Chaupicho, un mercado de cosas usadas entre amigos.`;
-          if (l.photo) datos.imagen = `${SUPABASE_URL}/storage/v1/object/public/fotos/${l.photo.split('/').map(encodeURIComponent).join('/')}`;
+          if (l.photo) datos.imagen = foto(l.photo);
+        }
+      } else if (tipo === 'p' && /^[0-9a-f-]{36}$/i.test(id || '')) {
+        datos.destino = `${APP}#/p/${id}${codigo ? '?i=' + encodeURIComponent(codigo) : ''}`;
+        const filas = await rpc('profile_preview', { p_id: id, p_code: codigo });
+        const p = Array.isArray(filas) ? filas[0] : null;
+        if (p) {
+          datos.titulo = `Las cosas de ${p.name} en Chaupicho`;
+          datos.descripcion = `${p.activos === 1 ? '1 cosa' : p.activos + ' cosas'} a la venta. Un mercado de cosas usadas entre amigos.`;
+          const img = p.share_image || (p.photos && p.photos[0]);
+          if (img) datos.imagen = foto(img);
         }
       } else if (tipo === 'i' && /^[0-9a-z]{4,40}$/i.test(id || '')) {
         datos.destino = `${APP}#/i/${encodeURIComponent(id)}`;

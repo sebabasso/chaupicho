@@ -38,6 +38,7 @@ const waChat = (num, txt) => `https://wa.me/${num}?text=${encodeURIComponent(txt
 const waShare = (txt) => `https://wa.me/?text=${encodeURIComponent(txt)}`;
 const LINKS = 'https://ver.chaupicho.app';
 const linkAnuncio = (id) => LINKS ? `${LINKS}/a/${id}?i=${st.me?.invite_code || ''}` : `${APP_URL}#/a/${id}?i=${st.me?.invite_code || ''}`;
+const linkPerfil = (id) => LINKS ? `${LINKS}/p/${id}?i=${st.me?.invite_code || ''}` : `${APP_URL}#/p/${id}?i=${st.me?.invite_code || ''}`;
 const linkInvitacion = () => LINKS ? `${LINKS}/i/${st.me?.invite_code}` : `${APP_URL}#/i/${st.me?.invite_code}`;
 function entregaTexto(l) {
   if (l.delivery_type === 'retiro') return 'Se retira por ' + (l.delivery_place || 'a definir');
@@ -128,6 +129,7 @@ async function render() {
 
   if (!st.session) {
     if (parts[0] === 'a' && parts[1]) return vPrevia(parts[1]);
+    if (parts[0] === 'p' && parts[1] && parts[1] !== 'yo') return vPreviaPerfil(parts[1]);
     if (parts[0] === 'i' && parts[1]) return vBienvenida(parts[1]);
     return vEntrar();
   }
@@ -287,6 +289,77 @@ async function vPrevia(id) {
     <div style="background:var(--grad-lila);border-radius:20px;padding:20px" class="col g4"><span class="h-2">Un mercado entre amigos</span><p>En Chaupicho se entra por invitación. Este link es tu invitación${l.sharer_name ? ' de parte de ' + esc(l.sharer_name) : ''}.</p></div>
     <a class="btn btn-primario ancho" href="#/entrar">Sumarme y escribirle a ${esc(l.seller_name)}</a>
   </div>`;
+}
+
+async function vPreviaPerfil(id) {
+  const code = ruta().q.get('i') || ls.get('chaupicho_codigo') || '';
+  const { data } = await sb.rpc('profile_preview', { p_id: id, p_code: code });
+  const p = data?.[0];
+  if (!p) return vEntrar();
+  ls.set('chaupicho_siguiente', '#/p/' + id);
+  const quien = p.sharer_name || 'Un amigo';
+  const fotos = (p.photos || []).map(fotoUrl);
+  $app.innerHTML = `<div class="pantalla" style="padding-bottom:40px">
+    ${logo}
+    <div class="fila" style="gap:16px">${avatar({ id, name: p.name, avatar: p.avatar }, 72)}<div class="col g4"><h1 class="h-1">${esc(p.name)}</h1>
+      <span class="small">${p.barrio ? esc(p.barrio) + ' · ' : ''}${p.activos === 1 ? '1 cosa a la venta' : p.activos + ' cosas a la venta'}</span></div></div>
+    ${quien !== p.name ? `<p><b>${esc(quien)}</b> te compartió el perfil de <b>${esc(p.name)}</b> en Chaupicho.</p>` : `<p><b>${esc(p.name)}</b> te compartió las cosas que vende en Chaupicho.</p>`}
+    ${fotos.length ? `<div class="grilla">${fotos.map((f) => `<div style="aspect-ratio:1;border-radius:20px;overflow:hidden;background:var(--sunken)"><img src="${esc(f)}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}</div>` : ''}
+    <div style="background:var(--grad-lila);border-radius:20px;padding:20px" class="col g4"><span class="h-2">Un mercado entre amigos</span><p>En Chaupicho se entra por invitación. Este link es tu invitación${p.sharer_name ? ' de parte de ' + esc(p.sharer_name) : ''}.</p></div>
+    <a class="btn btn-primario ancho" href="#/entrar">Sumarme y ver todo lo que vende ${esc(p.name)}</a>
+  </div>`;
+}
+
+/* ---------- imagen para compartir el perfil ---------- */
+async function cargarImagen(url) {
+  const im = new Image(); im.crossOrigin = 'anonymous'; im.src = url;
+  await im.decode(); return im;
+}
+async function actualizarImagenPerfil(lista) {
+  try {
+    const fotos = lista.filter((l) => l.status === 'activo' && l.photos?.length).slice(0, 4).map((l) => l.photos[0]);
+    const activos = lista.filter((l) => l.status === 'activo').length;
+    const firma = JSON.stringify([st.me.name, st.me.avatar, fotos, activos]);
+    if (!fotos.length || (ls.get('chaupicho_firma_perfil') === firma && st.me.share_image)) return;
+    try { await document.fonts.load('800 64px "Bricolage Grotesque"'); await document.fonts.load('600 30px Figtree'); } catch {}
+    const W = 1200, H = 630, alto = 430, gap = 6;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const fondo = g.createLinearGradient(0, 0, W * 0.4, H); fondo.addColorStop(0, '#5a1066'); fondo.addColorStop(0.55, '#3c0443'); fondo.addColorStop(1, '#240228');
+    g.fillStyle = fondo; g.fillRect(0, 0, W, H);
+    const imgs = await Promise.all(fotos.map((f) => cargarImagen(fotoUrl(f))));
+    const ancho = (W - gap * (imgs.length - 1)) / imgs.length;
+    imgs.forEach((im, i) => {
+      const x = i * (ancho + gap), k = Math.max(ancho / im.width, alto / im.height);
+      const sw = ancho / k, sh = alto / k;
+      g.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, x, 0, ancho, alto);
+    });
+    // texto centrado en la franja de abajo
+    const titulo = `Las cosas de ${st.me.name}`;
+    const sub = `${activos === 1 ? '1 cosa' : activos + ' cosas'} a la venta en chaupicho.`;
+    g.font = '800 64px "Bricolage Grotesque", Figtree, sans-serif';
+    const tw = g.measureText(titulo).width;
+    const av = 96, sep = 24, total = av + sep + tw, x0 = (W - total) / 2, cy = alto + (H - alto) / 2;
+    g.save(); g.beginPath(); g.arc(x0 + av / 2, cy, av / 2, 0, Math.PI * 2); g.closePath(); g.clip();
+    let conFoto = false;
+    if (st.me.avatar) { try { const a = await cargarImagen(fotoUrl(st.me.avatar)); g.drawImage(a, x0, cy - av / 2, av, av); conFoto = true; } catch {} }
+    if (!conFoto) { g.fillStyle = '#c98bf9'; g.fillRect(x0, cy - av / 2, av, av); g.fillStyle = '#3c0443'; g.font = '700 34px Figtree, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(iniciales(st.me.name), x0 + av / 2, cy + 2); }
+    g.restore();
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillStyle = '#ffffff'; g.font = '800 64px "Bricolage Grotesque", Figtree, sans-serif';
+    g.fillText(titulo, x0 + av + sep, cy - 4);
+    g.fillStyle = '#d9affb'; g.font = '600 30px Figtree, sans-serif';
+    g.fillText(sub, x0 + av + sep, cy + 38);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.86));
+    const path = `${st.me.id}/compartir-${crypto.randomUUID()}.jpg`;
+    const up = await sb.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg' });
+    if (up.error) throw up.error;
+    const vieja = st.me.share_image;
+    const { error } = await sb.from('profiles').update({ share_image: path }).eq('id', st.me.id);
+    if (error) throw error;
+    if (vieja) sb.storage.from('fotos').remove([vieja]);
+    st.me.share_image = path; ls.set('chaupicho_firma_perfil', firma);
+  } catch (e) { console.warn('No se pudo armar la imagen del perfil', e); }
 }
 
 /* ---------- sumarse ---------- */
@@ -599,6 +672,7 @@ async function vPerfil(id) {
       <span class="small">${p.barrio ? esc(p.barrio) + ' · ' : ''}${activos === 1 ? '1 cosa a la venta' : activos + ' cosas a la venta'}</span></div></div>
     ${!yo && cadena.length > 1 ? `<div class="tarjeta col g12" style="padding:16px"><span class="fila entre"><span style="font-size:15px;font-weight:700">Cómo llegás a ${esc(p.name)}</span>${pill(grado(id))}</span><div class="cadena" role="img" aria-label="${esc(cadena.map((c) => (c.id === st.me.id ? 'Vos' : c.name)).join(', '))}">${chainHtml}</div></div>` : ''}
     ${!yo ? `<a class="btn btn-primario ancho" href="${waChat(p.whatsapp, `¡Hola ${p.name}! Te escribo desde Chaupicho.`)}" target="_blank" rel="noopener">${I.chat()}Escribile a ${esc(p.name)} por WhatsApp</a>` : ''}
+    ${yo && activos ? `<a class="btn btn-borde ancho" href="${waShare(`¡Mirá las cosas que vendo en Chaupicho! ${linkPerfil(st.me.id)}`)}" target="_blank" rel="noopener">${I.chat()}Compartir mi perfil por WhatsApp</a>` : ''}
     <section class="col g12"><h2 class="h-2">${yo ? 'Lo que publicaste' : 'Lo que vende ' + esc(p.name)}</h2>
       ${lista.length ? `<div class="grilla">${lista.map((l) => card(l, yo ? (vistas[l.id] || 0) : null)).join('')}</div>` : `<div class="vacio"><p class="small">${yo ? 'Todavía no publicaste nada.' : 'No tiene nada publicado por ahora.'}</p>${yo ? '<a class="btn btn-primario" href="#/publicar">Publicar algo</a>' : ''}</div>`}
     </section>
@@ -609,6 +683,7 @@ async function vPerfil(id) {
     ${tabs(yo ? 'yo' : '')}`;
   document.getElementById('atras')?.addEventListener('click', () => (history.length > 1 ? history.back() : go('#/')));
   document.getElementById('salir')?.addEventListener('click', salir);
+  if (yo) actualizarImagenPerfil(lista);
   const fp = document.getElementById('foto-perfil');
   if (fp) fp.onchange = async () => {
     const file = fp.files[0]; if (!file) return;
